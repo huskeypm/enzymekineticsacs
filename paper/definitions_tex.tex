@@ -1,0 +1,13 @@
+% margin notes 
+  \newcounter{mnote}
+  \setcounter{mnote}{0}
+  \newcommand{\mnote}[1]{\addtocounter{mnote}{1}
+    \ensuremath{{}^{\bullet\arabic{mnote}}}
+    \marginpar{\footnotesize\em\color{red}\ensuremath{\bullet\arabic{mnote}}#1}}
+  \let\oldmarginpar\marginpar
+    \renewcommand\marginpar[1]{\-\oldmarginpar[\raggedleft\footnotesize
+#1]%
+    {\raggedright\footnotesize #1}}
+
+\newacronym{HCM}{hypertrophic cardiomyopathy}
+{name={HCM},description={hypertrophic cardiomyopathy}}

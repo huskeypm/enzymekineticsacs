@@ -1,0 +1,165 @@
+%%%
+%%% PKH notes
+%%%
+\documentclass{article}
+
+% Define some colors needed for nicer hyperrefs
+\usepackage{color}
+ \definecolor{deepred}{rgb}{0.5,0,0}
+ \definecolor{deepgreen}{rgb}{0,0.5,0.2}
+ \definecolor{deepblue}{rgb}{0,0,0.65}
+ \definecolor{navyblue}{rgb}{0,0.23,0.65}
+ \definecolor{brightblue}{rgb}{0.3,0.5,1}
+ \definecolor{pink}{rgb}{1.0,0.1,1.0}
+% ------------------------------------------------------------------------
+
+
+% ------------------------------------------------------------------------
+% include all packages needed
+% use tocbibind instead of manually including thing with "addcontentsline"
+%\usepackage{epsfig,longtable,subfigure}
+\usepackage{float} % for creating custom floats 
+\usepackage{verbatim}
+\usepackage{amssymb,wrapfig,ifthen}
+\usepackage{setspace}
+\usepackage[figuresright]{rotating}
+\usepackage[numbers,square,comma]{natbib} % for square brackets, numbers only, comma between numbers
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{tocbibind}
+\usepackage{subfigure}
+\usepackage{multirow}
+\usepackage{amsfonts}
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{euscript}
+\usepackage{tabularx}
+%\usepackage{chapterbib} % in case I want to put a bibliography for a specific chapter, like my method for anchoring chapter
+\usepackage{makeidx} % don't know if I need it right now
+\usepackage[
+        style=altlist,
+        toc=true,
+        hyper=true,
+        number=section]{glossary} % in order to insert a glossary
+
+\usepackage[
+        plainpages=false,
+        pdfpagelabels,
+        backref={section},
+        %pagebackref=true,
+        pageanchor,
+        bookmarks=true,
+        bookmarksnumbered = true,
+        bookmarksopen=true,
+        bookmarksopenlevel=2,
+        colorlinks=true,
+        citecolor=deepgreen,%black,
+        urlcolor=brightblue,%black,
+        pagecolor=navyblue,%black,
+        linkcolor=deepred,%black,
+        ]{hyperref}
+
+%\DeclareGraphicsRule{.eps}{pdf}{.pdf}{`epstopdf #1}
+\DeclareGraphicsExtensions{.pdf,.jpg,.eps}
+\graphicspath{
+{./figs/}
+}
+
+
+% ------------------------------------------------------------------------
+% Abbreviations, rules, and so on specific to this thesis
+% ------------------------------------------------------------------------
+\linespread{0.5}
+
+% \input{symbols.tex}
+% \newcommand{\tbl}{Table ~\ref}
+\newcommand{\eq}{Eq.~\ref}
+\newcommand{\eqs}{Eqs.~\ref}
+\newcommand{\alg}{Alg.~\ref} % pkh for algorithms
+\newcommand{\sect}{Section~\ref}
+
+% PIX
+% JPC size \newcommand\singlecol{3.25in}
+\newcommand\singlecol{2.75in}
+% JPC size \newcommand\doublecol{7.10in}
+\newcommand\doublecol{6.0in}
+
+%DRAFT 
+\newcommand\setspacingclose{\setstretch{1.0}}
+%THESIS 
+%\newcommand\setspacing{\settretch{1.5}}
+\renewcommand\setspacingclose{\setstretch{1.5}}
+
+
+% reset counter in document 
+\newcommand\mytag[1]{\textbf{(#1.)}} % formats subfigure labels
+\newcommand{\fig}{Fig.~\ref}
+\newcommand\sfig[1]{\fig{#1}}
+\newcommand{\secn}{Section~\ref}
+\newcommand\ssect[1]{(\textit{Supplemental } \secn{#1} )}
+\newcommand{\tbl}{Table~\ref}
+\newcommand\stbl[1]{\tbl{#1}}
+
+\newcommand{\eqn}{Eq.~\ref}
+\newcommand{\eqns}{Eqs.~\ref}
+\newcommand{\chap}{Chapter~\ref}
+\newcommand{\chaps}{Chapters~\ref}
+\newcommand{\app}{Appendix~\ref}
+
+\makeindex  
+% ONLY reason to keep this line alive is for the "if *.idx exists then.." call in the makefile
+%       which ensures that the makeindex command with all the switches is executed, creating the glossary
+\makeglossary % to allow the creation of a glossary
+
+\begin{document}
+\bibliographystyle{unsrtnat} % to call the natbib version of the standard style "unsrt", i.e. unsorted bib style
+%%
+%% new commands (partII)
+%%
+
+
+
+
+% for tighlty spaced lists
+\newenvironment{packed_item}{
+\begin{itemize}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+}{\end{itemize}}
+\newenvironment{packed_enum}{
+\begin{enumerate}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+}{\end{enumerate}}
+
+\newcommand\lbi{\begin{packed_item}}
+\newcommand\lei{\end{packed_item}}
+\newcommand\lbn{\begin{packed_enum}}
+\newcommand\len{\end{packed_enum}}
+
+%custom float for creating pseudocode
+%\floatstyle{ruled}
+
+\setspacingclose
+\input{definitions}
+% for make/pdflatex
+%  \input{definitions_tex}
+% OR for latex2rtf
+  \input{definitions_rtf}
+
+\input{template_paper}
+% for make/pdflatex
+  %\input{figs}
+% for latex2rtf - do nothing 
+
+
+\newpage
+\bibliography{pkh} % 
+\appendix                               % start appendices
+\printindex
+
+
+
+\end{document}
+
