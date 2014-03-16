@@ -3,20 +3,20 @@ Biophysical journal
 
 %Be sure to follow:
 %\url{http://www.ccbb.pitt.edu/Faculty/zuckerman/ScienceWritingChecklist.pdf}
- “Multi-scale simulations of diffusion-influenced reactions”
+ "��Multi-scale simulations of diffusion-influenced reactions"
 
 \subsection{Abstract}
-\lbi
-\item what is the problem 
-\item What was done
-\item Key findings
-\item Implications 
-\lei
+%\lbi
+%\item what is the problem 
+%\item What was done
+%\item Key findings
+%\item Implications 
+%\lei
 
 Kekenes-Huskey, PM; Eun, Changsun and JA McCammon
 
 Biochemical reaction networks connect molecular signaling events with cellular function. 
-A subset of these reactions are strongly influenced by diffusion ‘barriers’ arising from impenetrable cellular structures and macromolecules, as well as interactions between the reaction substrate, its environment and its target enzyme.
+A subset of these reactions are strongly influenced by diffusion "barriers" arising from impenetrable cellular structures and macromolecules, as well as interactions between the reaction substrate, its environment and its target enzyme.
 For these diffusion-influenced reactions, the spatial organization of diffusion barriers, specific and non-specific binding kinetics, and molecular composition may determine the timescale and amplitude of substrate signals. 
 To this end we have developed simulation tools to determine how densely-packed diffusion obstacles, like proteins, and cellular structures give rise to  ’compartments’ within which substrate signals are decoupled, and how this decoupling depends on obstacle distribution and composition.
 A key advance of this approach is the use of homogenization theory to coarse-grain hindrance of diffusion due to substrate/obstacle interactions.
@@ -25,58 +25,86 @@ A key advance of this approach is the use of homogenization theory to coarse-gra
 
 
 \subsection{Introduction}
-\lbi
-\item INSERT MAJOR FIGURE FOR ENTIRE PAPER RIGHT HERE - write paper around this image 
-\item General background and specifics on system of interest
-\item Prior work that has been done
-\item explanaton of what was done in paper 
-\item key findings/spec aims
-\lei
+%\lbi
+%\item INSERT MAJOR FIGURE FOR ENTIRE PAPER RIGHT HERE - write paper around this image 
+%\item General background and specifics on system of interest
+%\item Prior work that has been done
+%\item explanaton of what was done in paper 
+%\item key findings/spec aims
+%\lei
 
-Biochemical reactions oftentimes stipulate diffusional resitrictions (Vendelin) 
-Earlier showed how packing density of molecular structures can drastically reduce bulk diffusion constant. 
-In this study, we seek to determine how diffusion barriers can influence reaction dynamics.
-
+Coupled, diffusion-influenced reactions are commonplace in biology. 
+An example includes the creatine kinase shuttle, which enables the rapid exchange of nucleotides between the cell cytosol and mitochondrial matrix, where adenosine triphosphate (ATP) is hydrolyzed and synthesized, respectively. 
+This rapid exchange is in part dependent on the fast diffusion of creatine and phosphocreatine, given that the charged nucleotides diffuse much more slowly through the outer mitochondrial membrane (OMM).
+The OMM thus acts as a diffusional barrier between nucleotide pools, or compartments, and the presence of which has been shown to dampen fluctuations in the nucleotide concentration within the mitochondrium relative to the cytosol. 
+Interestingly, a similar diffusional barrier has been proposed to exist directly adjacent to the cell membrane, which has been hypothesized to ensure a stable nucleotide supply to sarcolemmal ATPases. 
+To our knowledge, the composition of the proposed barrier has not been established.
+We investigated the hypothesis that a diffusional barrier arising from densely packed, charged proteins is sufficient to support compartmentalized reaction pools with differing reaction dynamics.
+We illustrate this for a simple equilibrium reaction (A into B) distributed across a diffusional barrier, subject to a periodic source term acting on one compartment.
+We furthermore demonstrate for an oscillatory reaction whose periodicity arises due to negative inhibition by a substrate, that the diffusional environment of the inhibitory substrate can tune the frequency of oscillations. 
+These findings implicate the strong coupling of environment, spatial distribution and enzyme kinetics in shaping the dynamics of biochemical reactions. 
 
 
 \subsection{Materials and methods}
-\subsubsection{Homog}
-Describe key homog paramers
+\subsubsection{Homogenization}
+(Put in JCP details)
+We consider a lattice of globular proteins (of radius 13 Ang) that are evenly distributed. The spacing between proteins is varied such that the accessible volume fraction of of the lattice varies from 0.5 to 0.95. We further assume a net negative charge on the protein and a series of ligands whose unit charge varies between -1 and 1. Using our homogenization model (REF), we predict the normalized effective diffusion constants that represent the diffusional hindrance imposed by the charged lattice of proteins. 
 
 \subsubsection{Finite element method} 
-Describe key homog paramers
+(Put in JCP details) 
 
 \subsubsection{Reactions} 
 \lbi
-\item compart
-\item Goodwin 
+\item We consider the reaction, A <--> B, catalyzed by Enzyme E, with the forward rate of A into B defined as kf and kb is the reverse rate. . Enzyme E is distributed in the non-adjacent compartments 1 and 3, while no reaction occurs in compartment 2. The substrate pools in compartment 1 exchange with compartment 3 by diffusion through compartment 2. 
+\item The Goodwin oscillator is represented by the reactions
+\begin{verbatim}
+Get eqns 1-3 from
+http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0069573
+   --> A, by E1
+A --> B, by E2
+B--> C, by E3
+E1 is inhibited by C
+\end{verbatim}
+In our example, we restrict enzymes 1 and 2 into compartment 1 and enzyme 3 in compartment 3. As with the previous example, no reactions, only substrate diffusion occurs in compartment 2.
+
 \lei
 
 \subsubsection{ODE} 
+(Put in Biophys details) 
+
 
 
 \subsection{Results}
-%Lists all figures and tables (just describe data, don't explain)
-% keep this list always, so I can reproduce data/figures easily
-% \lbi
-% \item expt: what it is doing
-% \item files/locations/date:
-% \item analysis: fig xxx 
-% \lei
+% Files are in compart.ipynb
 
 \paragraph*{Homogenizaton predicts a range/upper bound of diffusivities for protein} 
-Fig what is it, explain colors. what they mean
+In a previous study, we used homogenization theory to predict the effective diffusion constants for diffusion of a charged substrate (-1, 0, or 1) through a densely-packed lattice of charged globular proteins. The results in \fig{figshort:acsfig0} indicate that decreasing accessible volume fraction (phi) tends to reduce the effective diffusion coefficient from its normalized bulk value of 1.0.  Repulsive interactions between substrate and the lattice yield the smallest diffusion constants, while attractive interactions yield the fastest constants. We utilize these effective diffusion constants in the reaction systems illustrated below. 
+\figshort{acsfig0.png}{fig0}{Get caption from JCP}
+
 
 \paragraph*{Diffusion barrier can depress fluctuations} 
-Table - what is shows, how expressed
-.....
+%Need to use real parameters here. What do they mean? what is DA=DB=1?
+In the figures below, we report the populations of A and B in each of the three compartments separated by diffusion barriers. In \fig{figshort:acsfig1a}, we consider the first reaction (A <--> B), but use large diffusion constants that reflect an absence of a diffusion barrier. We observe that A and B approach equilibrium values of approximately 0.25 and 1.0, respectively. Furthermore, the fluctuation amplitudes of A due to the periodic source in compartment 1 are identical in all compartments. In contrast,  \fig{figshort:acsfig1b} we show distinct differences in compartments 1 and 2 when small diffusion constants are used. Namely, the fluctuations in compartment 3 are a small fraction of those observed in compartment 1. 
+In \fig{figshort:acsfig1c}, we quantify the suppression of fluctuations in A in compartment 3 by the diffusional barrier (through varying the diffusion rate of A and B).  
+Namely, we compare the covariance of A in compartments 1 and 3, normalized by the auto covariance of A in compartment 1. Values approaching zero correspond to a complete suppression of fluctuations in compartment 3, while values approaching 1 indicate that the fluctuations are identical in compartments 1 and 3. 
+We observe that the fluctuations are strongly suppressed for diffusion constants less than 1, while suppression is minimized as D approaches a large rate corresponding to the absence of a diffusion barrier. 
+\figshort{acsfig1a.png}{fig1a}{A fluctuations are identical in all compartments. } 
+\figshort{acsfig1b.png}{fig1b}{Reduced diff constants lead to decoupling of populations} 
+\figshort{acsfig1c.png}{fig1c}{Normal range of diffusion barriers has substantial capacity to compartmentalize dynamics} 
+
 \paragraph*{Diffusion barrier can alter reaction frequency} 
+In the figures below, we demonstrate how changes in the diffusion barrier imposed on a negative inhibitor impacts the frequency of a prototypical oscillatory model (Goodwin model). 
+In \fig{figshort:fig2a} we demonstrate that the oscillator yields periodically-varying concentrations of species A (blue) and C (black,C is the inhibitor). In this case, the diffusion barriers are negligible given that a very large diffusion constant for C was used. \fig{figshort:fig2b}, we reduce the diffusion constants to 1.0 for species A and B, while we vary DC between 0.1 and 10.0. We observe that frequency of the A and C oscillations is largest when DC is large and decreases for smaller values of DC. \fig{figshort:fig2c} we compare the change in frequency over a range of diffusion constants and find that very small and very large diffusion constants can change the baseline frequency (1.0) by -80\% and +40\%, respectively. 
+\figshort{acsfig2a.png}{fig2a}{Well-mixed goodwin oscillator} 
+\figshort{acsfig2b.png}{fig2b}{Oscillations with varying D} 
+\figshort{acsfig2c.png}{fig2c}{Normal range of diffusion barriers has substantial capacity to compartmentalize dynamics} 
 
 
 \subsection{Conclusions} 
-Crowded environment can bound diffusion constants withincertain range 
-Extent of crowding and crowderes can supress fluctuations betweebn domains 
-Can act as shift frequency. 
+A crowded cellular environment represented by a lattice of charged proteins can significantly vary the diffusion rate of substrates. 
+We demonstrate that the dynamics of substrate pools can vary significantly between compartments that are separated by diffusional barriers typical of those suggested by our lattice model.
+Furthermore, for oscillatory biochemical reactions, the presence of diffusion barriers can substantially shift baseline periods to lower frequencies. 
+These findings provide insight into the ability of the cellular environment to tune biochemical reaction dynamics. 
 
 %\subsection{Discussion}
 %what was done
