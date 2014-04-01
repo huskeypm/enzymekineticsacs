@@ -1,0 +1,17 @@
+
+Source dolfin files
+source ucsd.bash  
+
+Call ipython notebook on chemcca11
+python notebook --pylab inline
+shoudl launch browder
+
+(or tunnel via:
+on chemcca11
+ipython notebook --no-browser --port=7000 --pylab=inline
+
+locally
+ssh -L 7001:localhost:7001 $MYUCSD
+
+)
+
