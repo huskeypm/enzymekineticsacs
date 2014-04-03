@@ -12,9 +12,8 @@ from dolfin import *
 import numpy as np
 
 ## My reaction system 
-# dc/dt = del D del c - R(c,cB)
-# dcB/dt = del D del cB + R(c,cB)
-# R(c,CB) = kp * (B - cB)*c - km*cB
+# dc/dt = 
+
 
 ## Params 
 field=False
@@ -30,8 +29,11 @@ dist = Constant(1.)  # PKH what is this
 ## params 
 kp = 1.0     
 km = 0.6 
-cInit = 1.0 # [uM]
-sInit =20.
+cInit = 0.5 # [uM]
+cbInit = 0.5 # [uM]
+sInit =1.0
+tInit =1.0
+
 bT = 70.0   # [uM]  
 Kd = km/kp; # [uM] 
 dt     = 1.0e-03  
@@ -129,6 +131,8 @@ u0.interpolate(init_cond)
 #else:
 RHS1 = -inner(Dij*grad(c_n),grad(q))*dx  
 RHS2 = -inner(Dij*grad(cb_n),grad(v))*dx 
+RHS3 = Constant(0)*s*dx # for consistency
+RHS4 = Constant(0)*t*dx
 
 # Reaction: b + c --kp--> cb,  
 #           b + c <-km--- cb
@@ -139,11 +143,15 @@ R = np.array([
 
 
 # operator splitting 
-opSplit=False
-opSplit=True # just turning off reaction s
-if(opSplit==False):
-  RHS1 += (R[0,0]*(bT-cb)*c*q + R[0,1]*cb*q)*dx
-  RHS2 += (R[1,0]*(bT-cb)*c*v + R[1,1]*cb*v)*dx
+rxn=False
+#opSplit=True # just turning off reaction s
+if(rxn):
+  # no rxn in PDE part   
+  #RHS1 += (R[0,0]*(bT-cb_n)*c_n*q + R[0,1]*cb_n*q)*dx
+  #RHS2 += (R[1,0]*(bT-cb_n)*c_n*v + R[1,1]*cb_n*v)*dx
+
+  RHS3 += (R[0,0]*(bT-ct_n)*cs_n*s + R[0,1]*ct_n*s)*dx
+  RHS4 += (R[1,0]*(bT-ct_n)*cs_n*t + R[1,1]*ct_n*t)*dx
 
 
 # Time derivative and diffusion of field species
@@ -157,14 +165,14 @@ L2 = (cb_n-cb0)*v/dt*dx - RHS2
 
 # Flux to mesh domain
 L1 -= Dij*(cs_n-c_n)*q/dist*ds(10)
-L2 -= Dij*(ct_n-cb_n)*s/dist*ds(10)
+L2 -= Dij*(ct_n-cb_n)*v/dist*ds(10)
 
 
 # Time derivative of scalar species and flux from scalar domain 
-L3 = Dij*(cs_n-c_n)*s/dist*ds(10)
-L4 = Dij*(ct_n-cb_n)*t/dist*ds(10)
-L3 += (cs_n-cs0)*s/(dt*volume_frac)*dx 
-L4 += (ct_n-ct0)*t/(dt*volume_frac)*dx 
+L3 = (cs_n-cs0)*s/(dt*volume_frac)*dx - RHS3
+L4 = (ct_n-ct0)*t/(dt*volume_frac)*dx - RHS4
+L3 += Dij*(cs_n-c_n)*s/dist*ds(10)
+L4 += Dij*(ct_n-cb_n)*t/dist*ds(10)
 
 # compbine
 L = L1 + L2 + L3 + L4
@@ -184,23 +192,44 @@ solver.parameters["relative_tolerance"] = 1e-6
 file = File("output.pvd", "compressed")
 
 # Step in time
+# Step in time
 t = 0.0
-T = 5*float(dt)
+steps=5
+T = steps*float(dt)
+nComp = 4
+tots=np.zeros([steps,nComp])
+ts=np.zeros(steps)
+j=0
+
 while (t < T):
     solver.solve(problem, u_n.vector())
 
     # check values
-    for i,ele in enumerate(split(u_n)):
-      tot = assemble(ele*dx,mesh=mesh)
-      vol = assemble(Constant(1.)*dx,mesh=mesh)
-      print "Conc(%d) %f " % (i,tot/vol)
-
+    #for i,ele in enumerate(split(u_n)):
+    #  tot = assemble(ele*dx,mesh=mesh)
+    #  vol = assemble(Constant(1.)*dx,mesh=mesh)
+    #  conc = tot/vol  
+    #  tots[j,i]=tot  
+    #  print "Conc(%d) %f " % (i,tot/vol)
+    tots[j,0] = assemble(c_n*dx)
+    tots[j,1] = assemble(cb_n*dx)
+    tots[j,2] = assemble(cs_n/volume_frac*dx)
+    tots[j,3] = assemble(ct_n/volume_frac*dx)
+    ts[j] = t
+    
     file << (u_n.split()[0], t)
     #file << (u,t)
+    j+=1
     t += float(dt)
     u0.vector()[:] = u_n.vector()
 
 
+
+## assert 
+final = tots[-1,:] 
+finalRef = np.array([  510.33298176,  510.33298176, 3989.66701824, 3989.66701824])
+for i in np.arange(nComp): 
+  assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
 
 
 #
