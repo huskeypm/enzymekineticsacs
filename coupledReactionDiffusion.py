@@ -77,24 +77,28 @@ class MyEqn(NonlinearProblem):
         self.reset_sparsity = False
 
 
-
 # Define mesh and function space 
 #mesh = UnitSquare(16,16)
-simple=False
+simple=True 
+marker12 = 10 # boundary marker for domains 1->2
+marker13 = 11 # boundary marker for domains 1->3
 if(simple):
-  xMax= 2
-  yMax = 2 * 0.59
-  zMax = 5 
-  mesh = UnitCube(8,8,8)      
-  mesh.coordinates()[:]= np.array([xMax,yMax,zMax])* mesh.coordinates()
+  mesh = Mesh("cube.xml.gz")
+  face_markers = MeshFunction("uint",mesh, "cube_face_markers.xml.gz")
+  ds = Measure("ds")[face_markers]
+  finalRef = np.array([  37.089814176,  37.089814176, 250.910186824, 250.910186824])
+    
+
 else:
   mesh = Mesh("channel-mesh-0.xml.gz")
   face_markers = MeshFunction("uint",mesh, "channel-mesh-0_face_markers.xml.gz")
   ds = Measure("ds")[face_markers]
+  finalRef = np.array([  510.33298176,  510.33298176, 3989.66701824, 3989.66701824])
+
 
 ##
 volume = Constant(assemble(Constant(1.0)*dx,mesh=mesh))
-area = Constant(assemble(Constant(1.0)*ds(10),mesh=mesh))
+area = Constant(assemble(Constant(1.0)*ds(marker12),mesh=mesh))
 volume_scalar = Constant(4.*float(volume))
 volume_frac = volume/volume_scalar 
 
@@ -166,15 +170,15 @@ LA1 = (cA1_n-cA1_0)*vA1/dt*dx - RHSA1
 LB1 = (cB1_n-cB1_0)*vB1/dt*dx - RHSB1 
 
 # Flux to mesh domain
-LA1 -= Dij*(cA2_n-cA1_n)*vA1/dist*ds(10)
-LB1 -= Dij*(cB2_n-cB1_n)*vB1/dist*ds(10)
+LA1 -= Dij*(cA2_n-cA1_n)*vA1/dist*ds(marker12)
+LB1 -= Dij*(cB2_n-cB1_n)*vB1/dist*ds(marker12)
 
 
 # Time derivative of scalar species and flux from scalar domain 
 LA2 = (cA2_n-cA2_0)*vA2/(dt*volume_frac)*dx - RHSA2
 LB2 = (cB2_n-cB2_0)*vB2/(dt*volume_frac)*dx - RHSB2
-LA2 += Dij*(cA2_n-cA1_n)*vA2/dist*ds(10)
-LB2 += Dij*(cB2_n-cB1_n)*vB2/dist*ds(10)
+LA2 += Dij*(cA2_n-cA1_n)*vA2/dist*ds(marker12)
+LB2 += Dij*(cB2_n-cB1_n)*vB2/dist*ds(marker12)
 
 # compbine
 L = LA1 + LB1 + LA2 + LB2
@@ -207,12 +211,12 @@ while (t   < T):
     solver.solve(problem, u_n.vector())
 
     # check values
-    #for i,ele in enumerate(split(u_n)):
-    #  tot = assemble(ele*dx,mesh=mesh)
-    #  vol = assemble(Constant(1.)*dx,mesh=mesh)
-    #  conc = tot/vol  
-    #  tots[j,i]=tot  
-    #  print "Conc(%d) %f " % (i,tot/vol)
+    for i,ele in enumerate(split(u_n)):
+      tot = assemble(ele*dx,mesh=mesh)
+      vol = assemble(Constant(1.)*dx,mesh=mesh)
+      conc = tot/vol  
+      print "Conc(%d) %f " % (i,conc)          
+
     tots[j,0] = assemble(cA1_n*dx)
     tots[j,1] = assemble(cB1_n*dx)
     tots[j,2] = assemble(cA2_n/volume_frac*dx)
@@ -229,7 +233,6 @@ while (t   < T):
 
 ## assert 
 final = tots[-1,:] 
-finalRef = np.array([  510.33298176,  510.33298176, 3989.66701824, 3989.66701824])
 for i in np.arange(nComp): 
   assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
 
