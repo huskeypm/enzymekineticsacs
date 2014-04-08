@@ -17,11 +17,19 @@ print "WARNING: should test time-dependent soln of code against analytical resul
 # Concentrations [uM]
 # Time [ms] 
 # Diff constants [um^2/ms]  
+verbose=False
+idxA1 = 0 # PDE 
+idxA2 = 2 # left compartment 
+idxA3 = 4 # right compartment 
+
 
 ## Units
 nm_to_um = 1.e-3
 
 print "WARNING: fixunits" 
+Ds=0.01     # very slow [um^2/ms]
+Dw=1.       # water [um^2/ms]
+Df = 1000.
 
 
 from dolfin import *
@@ -56,7 +64,7 @@ def readpickle(fileName):
 # Volume '1' is our diffusional domain
 # Volume '2' is our ode domain 
 
-debug = True 
+debug = False
 
 
 ## Params 
@@ -78,12 +86,8 @@ nComp = 6
 
 class Params():
   # time steps 
-  if debug:
-    steps=5
-    dt = 1.
-  else:
-    steps = 500
-    dt = 0.25  # [ms] 
+  steps = 500
+  dt = 1.0   # [ms] 
 
   # diffusion params 
   D1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
@@ -162,7 +166,7 @@ def Report(u_n,mesh,t,concs=-1,j=-1):
       tot = assemble(ele*dx,mesh=mesh)
       vol = assemble(Constant(1.)*dx,mesh=mesh)
       conc = tot/vol
-      #print "t=%f Conc(%d) %f " % (t,i,conc)
+      print "t=%f Conc(%d) %f " % (t,i,conc)
       if(j>-1): 
         concs[j,i] = conc
 
@@ -351,6 +355,7 @@ def Problem(params = Params()):
   j=0
   
   while (t   < T):
+      #print "t", t
       solver.solve(problem, u_n.vector())
   
       ## store 
@@ -370,8 +375,9 @@ def Problem(params = Params()):
       tots[j,4] = assemble(cA3_n/volume_frac13*dx)
       tots[j,5] = assemble(cB3_n/volume_frac13*dx)
       ts[j] = t    
-      
-      file << (u_n.split()[0], t)    
+
+      if verbose:      
+        file << (u_n.split()[0], t)    
 
       ## update 
       #file << (u,vB2)
@@ -399,8 +405,7 @@ def test12():
   ## assert 
   # for 5 timesteps 
   #finalRef = np.array([  37.089814176,  37.089814176, 250.910186824, 250.910186824,25.6,25.6])
-  if debug: 
-    finalRef = np.array([  0.7499539 ,0.7499539 ,0.7500461 ,0.7500461, 0.1 ,      0.1  ])           
+  finalRef = np.array([  0.7499539 ,0.7499539 ,0.7500461 ,0.7500461, 0.1 ,      0.1  ])           
   print "start", result.tots[0,:] 
   final = result.tots[-1,:] 
   print "final",final 
@@ -418,8 +423,7 @@ def test13():
   ## assert 
   # for 5 timesteps 
   #finalRef = np.array([  27.98166065 , 27.98166065 ,256.  ,       256.   ,       29.61833935,   29.61833935])
-  if debug: 
-    finalRef = np.array([  0.30002065, 0.30002065, 1. ,        1.  ,       0.29997935, 0.29997935])                 
+  finalRef = np.array([  0.30002065, 0.30002065, 1. ,        1.  ,       0.29997935, 0.29997935])                 
   final = result.tots[-1,:] 
   print final 
   for i in np.arange(nComp): 
@@ -473,10 +477,114 @@ def test4():
   plt.legend(loc=0)
   plt.gcf().savefig("x.png") 
 
+def test5(arg=0):
+  if(arg=="all" or arg==1): 
+    test5i(Dbarrier=Ds,pickleName ="Dslow.pkl")
+  if(arg=="all" or arg==2): 
+    test5i(Dbarrier=Dw,pickleName ="Dwater.pkl")
+  if(arg=="all" or arg==3): 
+    test5i(Dbarrier=Df,pickleName ="Dfast.pkl")
+
+
+
+# crappy way of doing this (should use inheritance)  
+# oscillatory parameters 
+def oscparams(Dbarrier=1.):
+  amp = 0.05
+  amp =  75  # gets to 3x original conc
+  freq = 0.1
+  Df = 1000.
+
+  params = Params()
+  params.cA2init=1.0
+  params.cA1init=1.0
+  params.cA3init=1.0  
+  params.D12 = Df            
+  params.D13 = Df            
+  params.D1 = Dbarrier 
+  params.amp=amp
+  params.freq = freq
+  params.periodicSource=True  
+
+  return params 
+
+
+def test5i(Dbarrier=1.,pickleName="test.pkl"):
+
+  steps = 500
+  dt = 1.
+  # test
+  #steps=10  
+  #dt = 4
+  
+
+  # w diff barrier 
+  params = oscparams(Dbarrier=Dbarrier)
+  params.dt =dt
+  params.steps = steps   
+
+  results =  Problem(params=params)
+  tsp = results.ts
+  concsp = results.concs  
+  writepickle(pickleName,tsp,concsp)
+      
+  tsp,concsp = readpickle(pickleName)
+  
+  plt.title("Dbarrier %f [um^2/ms]" % Dbarrier)    
+  plt.plot(tsp,concsp[:,0],label="A1/PDE")    
+  plt.plot(tsp,concsp[:,2],label="A2")        
+  plt.plot(tsp,concsp[:,4],label="A3")        
+  plt.legend()
+  plt.gcf().savefig("test5.png") 
+
+
+def test6():
+  pickleName ="Ddist.pkl"
+  nds = 3
+  ds = 10**np.linspace(1,3,nds)
+  Dbarrier  = 0.1 
+  params = oscparams(Dbarrier=Dbarrier)
+  params.cBuff1 = 0. # conc buffer [uM] 
+
+  steps = 100
+  dt = 1.
+
+  if 1:
+    concArA2 = np.zeros([steps,nds])  
+    concArA3 = np.zeros([steps,nds])  
+    for j, d in enumerate(ds):
+        params.meshDim = np.array([d,100.,100.]) *nm_to_um # uM
+        results = Problem(params=params)
+        tsij = results.ts
+        concsij = results.concs  
+        concArA2[:,j] = concsij[:,idxA2]
+        concArA3[:,j] = concsij[:,idxA3]
+    
+    concs =  [concArA2,concArA3]       
+    writepickle(pickleName,tsij,concs)
+      
+  tsij,concsr = readpickle(pickleName)
+  concArA2 = concsr[0]
+  concArA3 = concsr[1]
+  
+  
+  j=0   
+  styles=['k-','k-.','k.']
+  plt.plot(tsij,concArA3[:,j],styles[j],label="d: %f [nm] " % ds[j])
+  j=1    
+  plt.plot(tsij,concArA3[:,j],styles[j],label="d: %f [nm] " % ds[j])
+  j=2    
+  plt.plot(tsij,concArA3[:,j],styles[j],label="d: %f [nm] " % ds[j])
+  plt.legend(loc=2)    
+  plt.gcf().savefig("test6.png")   
+  
+
 
 
 def validation(): 
   Params.debug = True
+  Params.dt = 1.
+  Params.steps = 5
   Params.meshDim = np.array([1.,1.,1.])   # [um] 
   # based on 4x4 grid, need to recompute for 1x1 grid 
   test12()
@@ -531,6 +639,15 @@ if __name__ == "__main__":
       quit()
     if(arg=="-test4"): 
       test4()
+      quit()
+    if(arg=="-test5"): 
+      test5("all")
+      quit()
+    if(arg=="-test5i"): 
+      test5(np.int(sys.argv[i+1]))
+      quit()
+    if(arg=="-test6"): 
+      test6()
       quit()
   
 
