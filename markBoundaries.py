@@ -8,7 +8,8 @@ from dolfin import *
 import numpy as np 
 
 # outer
-cubeDim=([4,4,4]) 
+#cubeDim=([4,4,4]) 
+cubeDim=([1,1,1]) 
 class LeftBoundary(SubDomain): 
   def inside(self,x,on_boundary):
     return x[0] < 0+DOLFIN_EPS and on_boundary 

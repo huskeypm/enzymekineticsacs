@@ -1,4 +1,8 @@
 # 
+import matplotlib.pylab as plt
+class empty:pass
+
+print "WARNING: should test time-dependent soln of code against analytical results" 
 
 
 # TODO 
@@ -8,8 +12,44 @@
 # add right hand compart (remember, need to have more generall way of defining weak forms for all these rxns 
 
 
+# Units 
+# Distances [um] 
+# Concentrations [uM]
+# Time [ms] 
+# Diff constants [um^2/ms]  
+
+## Units
+nm_to_um = 1.e-3
+
+print "WARNING: fixunits" 
+
+
 from dolfin import *
 import numpy as np
+
+import cPickle as pickle
+def writepickle(fileName,ts,concs,verbose=False):
+  # store 
+  data1 = {'ts':ts,'concs':concs}
+
+  if verbose:
+    print "Writing ", fileName
+  output = open(fileName, 'wb')
+
+  # Pickle dictionary using protocol 0.
+  pickle.dump(data1, output)
+
+  output.close()
+
+def readpickle(fileName):    
+  pkl_file = open(fileName, 'rb')
+  data1 = pickle.load(pkl_file)
+  ts  = data1['ts']
+  concs  = data1['concs']  
+  pkl_file.close()
+  return ts,concs
+
+
 
 ## My reaction system 
 # dc/dt = 
@@ -21,7 +61,9 @@ debug = True
 
 ## Params 
 # compartments 
-dist = Constant(1.)  # PKH what is this - dist between 1/2 and 1/3 
+dist = 1.  # [um] PKH what is this - dist between 1/2 and 1/3 
+dist = 1.*nm_to_um  # [um] PKH what is this - dist between 1/2 and 1/3 
+dist = Constant(dist)  # [nm?] PKH what is this - dist between 1/2 and 1/3 
 
 # kinetics 
 kp = 1.0     
@@ -33,18 +75,22 @@ Kd = km/kp; # [uM]
 nComp = 6
 
 
-# time steps 
-if debug:
-  steps=5
-else:
-  steps = 500
 
 class Params():
-  dt = 0.25  # [s] 
-  D1   = 1.  # [um^2/s] Diff const within PDE (domain 1) 
-  D12  = 1.  # [um^2/s] Diff const between domain 1 and 2
-  D13  = 1.  # [um^2/s] Diff const between domain 1 and 3
+  # time steps 
+  if debug:
+    steps=5
+    dt = 1.
+  else:
+    steps = 500
+    dt = 0.25  # [ms] 
 
+  # diffusion params 
+  D1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
+  D12  = 1000.  # [um^2/ms] Diff const between domain 1 and 2
+  D13  = 1000.  # [um^2/ms] Diff const between domain 1 and 3
+
+  # init concs 
   cA1init = 0.5 # [uM]
   cB1init = 0.5 # [uM]
   cA2init =1.0
@@ -52,9 +98,21 @@ class Params():
   cA3init =0.1
   cB3init =0.1
 
+  # buffer (PDE domain for now) 
+  cBuff1= 0. # concentration [uM]
+  KDBuff1 = 1. # KD [uM]  
+
+  # source
   periodicSource=False # periodic source on CA2
-  a = 0.3
-  b = 0.2 
+  amp = 0.05 # [uM] 
+  freq = 0.1 # [kHz]? 
+
+  # geometry 
+  #np.max(mesh.coordinates()[:],axis=0) - np.min(mesh.coordinates()[:],axis=0) 
+  meshDim = np.array([100.,100.,100.])*nm_to_um # [um] 
+  volume_scalar2  = 1. # [um^3] 
+  volume_scalar3  = 1. # [um^3] 
+
 
 
 
@@ -93,10 +151,56 @@ class MyEqn(NonlinearProblem):
         assemble(self.a, tensor=A, reset_sparsity=self.reset_sparsity)
         self.reset_sparsity = False
 
+def Report(u_n,mesh,t,concs=-1,j=-1):
+
+
+    # 
+    #xTest = [5.0,0.5,0.5]
+    #u = u_n.split()[0]
+    #print "A1 at xTest: ", u(xTest)              
+    for i,ele in enumerate(split(u_n)):
+      tot = assemble(ele*dx,mesh=mesh)
+      vol = assemble(Constant(1.)*dx,mesh=mesh)
+      conc = tot/vol
+      #print "t=%f Conc(%d) %f " % (t,i,conc)
+      if(j>-1): 
+        concs[j,i] = conc
+
+def PrintSlice(results): 
+    mesh = results.mesh
+    dims = np.max(mesh.coordinates(),axis=0) - np.min(mesh.coordinates(),axis=0)
+    u = results.u_n.split()[0]
+    up = project(u,FunctionSpace(mesh,"CG",1))
+    res = 100
+    (gx,gy,gz) = np.mgrid[0:dims[0]:(res*1j),
+                          dims[1]/2.:dims[1]/2.:1j,
+                          0:dims[2]:(res*1j)]
+    from scipy.interpolate import griddata
+    img0 = griddata(mesh.coordinates(),up.vector(),(gx,gy,gz))
+    
+    imgx=np.reshape(img0,[res,res])
+    print np.shape(imgx)
+    plt.pcolormesh(np.reshape(gx,[res,res]).T,np.reshape(gz,[res,res]).T,imgx.T,
+           cmap=plt.cm.RdBu_r)
+    plt.xlabel("x [um]")
+    plt.ylabel("z [um]")
+    plt.colorbar()
+
+      
 
 def Problem(params = Params()): 
+
+  # get effective diffusion constant based on buffer 
+  D1eff = params.D1 / (1 + params.cBuff1/params.KDBuff1)
+  print "D: %f Dwbuff: %f [um^2/ms]" % (params.D1,D1eff)
+  print "dim [um]", params.meshDim
+
+  steps = params.steps 
+
+  # rescale diffusion consants 
+
   dt = Constant(params.dt)
-  D1 = Constant(params.D1)   # diff within domain 1 
+  D1 = Constant(D1eff)   # diff within domain 1 
   D12 = Constant(params.D12) # diffusionb etween domain 1 and 2 
   D13 = Constant(params.D13)
 
@@ -105,6 +209,7 @@ def Problem(params = Params()):
   marker12 = 10 # boundary marker for domains 1->2
   marker13 = 11 # boundary marker for domains 1->3
   mesh = Mesh("cube.xml.gz")
+  mesh.coordinates()[:]*= params.meshDim
   face_markers = MeshFunction("uint",mesh, "cube_face_markers.xml.gz")
   ds = Measure("ds")[face_markers]
       
@@ -113,10 +218,11 @@ def Problem(params = Params()):
   ##
   volumeDom1 = Constant(assemble(Constant(1.0)*dx,mesh=mesh))
   area = Constant(assemble(Constant(1.0)*ds(marker12),mesh=mesh))
-  volume_scalar2 = Constant(4.*float(volumeDom1))
-  volume_frac12 = volumeDom1/volume_scalar2 
-  volume_scalar3 = Constant(4.*float(volumeDom1))
-  volume_frac13 = volumeDom1/volume_scalar3
+  #was volume_scalar2 = Constant(4.*float(volumeDom1))
+  volume_frac12 = volumeDom1/params.volume_scalar2 
+  #was volume_scalar3 = Constant(4.*float(volumeDom1))
+  volume_frac13 = volumeDom1/params.volume_scalar3
+  print "Vol V1 %f V2 %f V3 %f [um^3]" % (volumeDom1,params.volume_scalar2,params.volume_scalar3)
   
   # functions 
   V = FunctionSpace(mesh,"CG",1)
@@ -181,7 +287,7 @@ def Problem(params = Params()):
     RHSB3 += (R[1,0]*(bT-cB3_n)*cA3_n*vB3 + R[1,1]*cB3_n*vB3)*dx
 
   # periodic source
-  expr = Expression("a*sin(b*t)",a=params.a,b=params.b,t=0)
+  expr = Expression("a*sin(b*t)",a=params.amp,b=params.freq,t=0)
   if params.periodicSource:
     print "Adding periodic source" 
     RHSA2 += expr*cA2_n*vA2*dx
@@ -231,8 +337,11 @@ def Problem(params = Params()):
   
   # Output file
   file = File("output.pvd", "compressed")
+
+
+  Report(u_n,mesh,0)                
+
   
-  # Step in time
   # Step in time
   t   = 0.0
   T = steps*float(dt)
@@ -246,12 +355,13 @@ def Problem(params = Params()):
   
       ## store 
       # check values
-      for i,ele in enumerate(split(u_n)):
-        tot = assemble(ele*dx,mesh=mesh)
-        vol = assemble(Constant(1.)*dx,mesh=mesh)
-        conc = tot/vol  
-        concs[j,i] = conc
-        #print "Conc(%d) %f " % (i,conc)          
+      Report(u_n,mesh,t,concs=concs,j=j)
+      #for i,ele in enumerate(split(u_n)):
+      #  tot = assemble(ele*dx,mesh=mesh)
+      #  vol = assemble(Constant(1.)*dx,mesh=mesh)
+      #  conc = tot/vol  
+      #  concs[j,i] = conc
+      #  print "t=%f Conc(%d) %f " % (t,i,conc)          
   
       tots[j,0] = assemble(cA1_n*dx) # PDE domain 
       tots[j,1] = assemble(cB1_n*dx)
@@ -270,47 +380,166 @@ def Problem(params = Params()):
       expr.t = t 
       u0.vector()[:] = u_n.vector()
   
-  return ts,concs,tots
+
+  results = empty()
+  results.ts = ts 
+  results.concs = concs 
+  results.tots = tots 
+  results.mesh = mesh 
+  results.u_n = u_n
+
+  return results
 
 def test12():
   ## test block of left channel 
   params = Params()
-  params.D12=1; params.D13=0. 
-  ts,concs,tots = Problem(params=params)
+  params.D12=1000; params.D13=0. 
+  result        = Problem(params=params)
 
   ## assert 
   # for 5 timesteps 
-  finalRef = np.array([  37.089814176,  37.089814176, 250.910186824, 250.910186824,25.6,25.6])
-  final = tots[-1,:] 
-  print final 
+  #finalRef = np.array([  37.089814176,  37.089814176, 250.910186824, 250.910186824,25.6,25.6])
+  if debug: 
+    finalRef = np.array([  0.7499539 ,0.7499539 ,0.7500461 ,0.7500461, 0.1 ,      0.1  ])           
+  print "start", result.tots[0,:] 
+  final = result.tots[-1,:] 
+  print "final",final 
   for i in np.arange(nComp): 
     assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
 
-  return tots
+  return result
 
 def test13():
-  ## test block of left channel 
+  ## test block of right channel 
   params = Params()
-  params.D12=0; params.D13=1. 
-  ts,concs,tots = Problem(params=params)
+  params.D12=0; params.D13=1000
+  result = Problem(params=params)
 
   ## assert 
   # for 5 timesteps 
-  finalRef = np.array([  27.98166065 , 27.98166065 ,256.  ,       256.   ,       29.61833935,   29.61833935])
-  final = tots[-1,:] 
+  #finalRef = np.array([  27.98166065 , 27.98166065 ,256.  ,       256.   ,       29.61833935,   29.61833935])
+  if debug: 
+    finalRef = np.array([  0.30002065, 0.30002065, 1. ,        1.  ,       0.29997935, 0.29997935])                 
+  final = result.tots[-1,:] 
   print final 
   for i in np.arange(nComp): 
     assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
 
-  return tots
+  return result
+
+def test4():
+  params = Params()
+  Params.meshDim = np.array([1.,1.,1.])   # [um] 
+
+  ## checked that domains remain constant 
+  if 0: 
+    params.cA1init=0.0000  
+    params.D1=0.        
+    params.cA2init=100.
+    params.cA3init=0.0000
+    params.D12=0.; params.D13=0.
+    result        = Problem(params=params)
+
+  ## conc even in all domains 
+  if 0: 
+    params.cA1init=0.0000  
+    params.D1=1000.     
+    params.cA2init=100.
+    params.cA3init=0.0000
+    params.D12=1000.; params.D13=1000.
+    result        = Problem(params=params)
+
+  ## conc even in all domains 
+  if 1: 
+    params.volume_scalar2  = 1000. # [um^3] 
+    params.volume_scalar3  = 1000. # [um^3] 
+    params.steps = 100
+    params.dt = 1 # [ms] 
+    params.cA1init=0.0000  
+    params.D1=0.145 # [um^2/ms] DATP 
+    params.cA2init=1.
+    params.cA3init=0.0000
+    params.D12=1000.; params.D13=1000.
+    params.meshDim = np.array([10.,1.,1.])   # [um] 
+    result        = Problem(params=params)
+
+    
+  return 
+  ts = result.ts
+  concs = result.concs
+  plt.plot(ts,concs[:,0],label="A1/PDE")    
+  plt.plot(ts,concs[:,2],label="A2")        
+  plt.plot(ts,concs[:,4],label="A3")        
+  plt.legend(loc=0)
+  plt.gcf().savefig("x.png") 
+
 
 
 def validation(): 
+  Params.debug = True
+  Params.meshDim = np.array([1.,1.,1.])   # [um] 
+  # based on 4x4 grid, need to recompute for 1x1 grid 
   test12()
   test13()
 
 
 
 
+
+
 #
 #validation()
+#!/usr/bin/env python
+import sys
+#
+# Revisions
+#       10.08.10 inception
+#
+
+def helpmsg():
+  scriptName= sys.argv[0]
+  msg="""
+Purpose: 
+ 
+Usage:
+"""
+  msg+="  %s -validation" % (scriptName)
+  msg+="""
+  
+ 
+Notes:
+
+"""
+  return msg
+
+if __name__ == "__main__":
+  import sys
+  msg = helpmsg()
+  remap = "none"
+
+  if len(sys.argv) < 2:
+      raise RuntimeError(msg)
+
+  fileIn= sys.argv[1]
+  if(len(sys.argv)==3):
+    print "arg"
+
+  for i,arg in enumerate(sys.argv):
+    if(arg=="-validation"):
+      #arg1=sys.argv[i+1] 
+      validation()
+      quit()
+    if(arg=="-test4"): 
+      test4()
+      quit()
+  
+
+
+
+
+
+  raise RuntimeError("Arguments not understood")
+
+
+
+
