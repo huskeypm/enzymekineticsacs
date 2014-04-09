@@ -17,7 +17,7 @@ print "WARNING: should test time-dependent soln of code against analytical resul
 # Concentrations [uM]
 # Time [ms] 
 # Diff constants [um^2/ms]  
-paraview=False
+#paraview=True  
 verbose=False 
 idxA1 = 0 # PDE 
 idxA2 = 2 # left compartment 
@@ -93,6 +93,9 @@ class Params():
   # time steps 
   steps = 500
   dt = 1.0   # [ms] 
+  steps = 250
+  dt = 2.0
+  
 
   # diffusion params 
   D1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
@@ -521,6 +524,8 @@ def test5i(Dbarrier=1.,pickleName="test.pkl"):
 
   steps = 500
   dt = 1.
+  steps = 250
+  dt = 2.
   # test
   #steps=10  
   #dt = 4
@@ -536,12 +541,13 @@ def test5i(Dbarrier=1.,pickleName="test.pkl"):
   concsp = results.concs  
   writepickle(pickleName,tsp,concsp)
       
-  tsp,concsp = readpickle(pickleName)
+
+  ts, concs,vars= readpickle(pickleName)
   
   plt.title("Dbarrier %f [um^2/ms]" % Dbarrier)    
-  plt.plot(tsp,concsp[:,0],label="A1/PDE")    
-  plt.plot(tsp,concsp[:,2],label="A2")        
-  plt.plot(tsp,concsp[:,4],label="A3")        
+  plt.plot(ts,concs[:,0],label="A1/PDE")    
+  plt.plot(ts,concs[:,2],label="A2")        
+  plt.plot(ts,concs[:,4],label="A3")        
   plt.legend()
   plt.gcf().savefig("test5.png") 
 
@@ -551,9 +557,9 @@ def test6(arg="diffs"):
   params = oscparams()
   params.cBuff1 = 0. # conc buffer [uM] 
   
-  steps = 100
+  steps = 250  
   params.steps = steps 
-  params.dt = 1
+  params.dt = 2
   
   ## test
   
@@ -564,14 +570,16 @@ def test6(arg="diffs"):
     pickleName ="Ddiffs.pkl"
 
   if(arg=="dists"):
-    vars = 10**np.linspace(1.8,2.2,nvars) 
+    #vars = 10**np.linspace(1.8,2.2,nvars) 
     vars = 10**np.linspace(1,3,nvars) 
     pickleName ="Ddists.pkl"
 
   if(arg=="buffs"):
-    vars = np.linspace(0,100,nvars)    
+    #vars = np.linspace(0,100,nvars)    
+    vars = 10**np.linspace(1,3,nvars) 
     pickleName ="Dbuffs.pkl"
 
+  concArA1 = np.zeros([steps,nvars])  
   concArA2 = np.zeros([steps,nvars])  
   concArA3 = np.zeros([steps,nvars])  
 
@@ -579,24 +587,39 @@ def test6(arg="diffs"):
     if arg=="diffs":
         params.D1 = var  
     if arg=="dists":
-        params.meshDim = np.array([var,100.,100.])*nm_to_um # [um]
+        vol = 100.*100*100.
+        yz = np.sqrt(vol/var)
+        conservVol=True
+        if conservVol:
+          params.meshDim = np.array([var,yz,yz])*nm_to_um # [um]
+        else: 
+          params.meshDim = np.array([var,100.,100.])*nm_to_um # [um]
+        print "mesh dim", params.meshDim
+
     if arg=="buffs":
         params.D1 = 1. # 
         params.cBuff1 = var  
 
     results = Problem(params=params)
+    # check that totals are conserved 
+    start = np.sum(results.tots[0,[idxA1,idxA2,idxA3]])
+    final = np.sum(results.tots[-1,[idxA1,idxA2,idxA3]])
+    print "Tot conc at start %f and end %f" %(start,final) 
+
     concsij = results.concs  
     tsij = results.ts  
+    concArA1[:,j] = concsij[:,idxA1]
     concArA2[:,j] = concsij[:,idxA2]
     concArA3[:,j] = concsij[:,idxA3]
 
 
-  concs =  [concArA2,concArA3]       
+  concs =  [concArA1,concArA2,concArA3]       
   writepickle(pickleName,tsij,concs,vars=vars)
     
   tsij,concsr,vars = readpickle(pickleName)
-  concArA2 = concsr[0]
-  concArA3 = concsr[1]
+  concArA1 = concsr[0]
+  concArA2 = concsr[1]
+  concArA3 = concsr[2]
     
   j=0   
   styles2=['k-','k-.','k.']
@@ -615,6 +638,66 @@ def test6(arg="diffs"):
   
 
   plt.gcf().savefig(arg+".png")   
+
+def test7():
+  #print phis
+  #print dists
+  nPhis = 11
+  #nBuffs = 3
+  nDists = 10 
+    
+  #KD = 1. # 1 [uM]     
+  #phis = np.linspace(0.5,1.0,nPhis)
+  #cBuffs = np.linspace(0,5,nBuffs) # [uM]
+  dists = 10**np.linspace(1,3,nDists)
+  Deffs = 10**np.linspace(-2,0,nPhis)
+  #print KDs
+
+
+  params = oscparams(Dbarrier=-1)
+  steps =10
+  dt = 10
+
+  params.steps=steps
+  params.dt = dt
+  vol = 100.*100*100.
+  pickleName="allf.pkl"  
+  stddevs = np.zeros([nDists,nPhis])
+
+  for i,dist in enumerate(dists):
+    # adj diffusion barrier length while conserving vol  
+    #dist = 100  
+    yz = np.sqrt(vol/dist)  
+    
+    for j, Deff in enumerate(Deffs): 
+      msg =  "Running dist/Deff %f %f" % (dist,Deff)    
+      print msg
+      params.meshDim = np.array([dist,yz,yz])*nm_to_um # [um]  
+      params.D1 = Deff
+      results = Problem(params=params)
+      ts = results.ts
+      concs = results.concs
+      
+      #plt.figure()
+      #plt.title(msg)
+      #plt.plot(ts,concs[:,idxA2])
+      #plt.plot(ts,concs[:,idxA3])
+      stddevs[i,j] = np.std(concs[:,idxA3])/np.std(concs[:,idxA2])
+      print "s%f \n"%(stddevs[i,j])
+      #break 
+    
+ 
+    
+  writepickle(pickleName,ts,stddevs)    
+
+  plt.pcolormesh(Deffs,dists,stddevs,cmap="Greys_r")
+  plt.xlabel("dists")
+  plt.ylabel("Deffs") 
+  plt.gcf().savefig("test7.png") 
+
+  
+    
+
   
 
 
@@ -687,6 +770,9 @@ if __name__ == "__main__":
       quit()
     if(arg=="-test6"): 
       test6(sys.argv[i+1])
+      quit()
+    if(arg=="-test7"): 
+      test7()#sys.argv[i+1])
       quit()
   
 
