@@ -17,7 +17,8 @@ print "WARNING: should test time-dependent soln of code against analytical resul
 # Concentrations [uM]
 # Time [ms] 
 # Diff constants [um^2/ms]  
-verbose=False
+paraview=False
+verbose=False 
 idxA1 = 0 # PDE 
 idxA2 = 2 # left compartment 
 idxA3 = 4 # right compartment 
@@ -36,9 +37,9 @@ from dolfin import *
 import numpy as np
 
 import cPickle as pickle
-def writepickle(fileName,ts,concs,verbose=False):
+def writepickle(fileName,ts,concs,vars=-1,verbose=False):
   # store 
-  data1 = {'ts':ts,'concs':concs}
+  data1 = {'ts':ts,'concs':concs,'vars':vars}
 
   if verbose:
     print "Writing ", fileName
@@ -49,13 +50,17 @@ def writepickle(fileName,ts,concs,verbose=False):
 
   output.close()
 
-def readpickle(fileName):    
+def readpickle(fileName,novar=False):    
   pkl_file = open(fileName, 'rb')
   data1 = pickle.load(pkl_file)
   ts  = data1['ts']
   concs  = data1['concs']  
+  if novar:
+    vars = 1
+  else: 
+    vars   = data1['vars']  
   pkl_file.close()
-  return ts,concs
+  return ts,concs,vars
 
 
 
@@ -157,7 +162,6 @@ class MyEqn(NonlinearProblem):
 
 def Report(u_n,mesh,t,concs=-1,j=-1):
 
-
     # 
     #xTest = [5.0,0.5,0.5]
     #u = u_n.split()[0]
@@ -166,7 +170,8 @@ def Report(u_n,mesh,t,concs=-1,j=-1):
       tot = assemble(ele*dx,mesh=mesh)
       vol = assemble(Constant(1.)*dx,mesh=mesh)
       conc = tot/vol
-      print "t=%f Conc(%d) %f " % (t,i,conc)
+      if verbose: 
+        print "t=%f Conc(%d) %f " % (t,i,conc)
       if(j>-1): 
         concs[j,i] = conc
 
@@ -294,7 +299,8 @@ def Problem(params = Params()):
   expr = Expression("a*sin(b*t)",a=params.amp,b=params.freq,t=0)
   if params.periodicSource:
     print "Adding periodic source" 
-    RHSA2 += expr*cA2_n*vA2*dx
+    #RHSA2 += expr*cA2_n*vA2*dx
+    RHSA2 += expr*vA2*dx
   
   
   # Time derivative and diffusion of field species
@@ -361,6 +367,7 @@ def Problem(params = Params()):
       ## store 
       # check values
       Report(u_n,mesh,t,concs=concs,j=j)
+
       #for i,ele in enumerate(split(u_n)):
       #  tot = assemble(ele*dx,mesh=mesh)
       #  vol = assemble(Constant(1.)*dx,mesh=mesh)
@@ -376,7 +383,7 @@ def Problem(params = Params()):
       tots[j,5] = assemble(cB3_n/volume_frac13*dx)
       ts[j] = t    
 
-      if verbose:      
+      if paraview:     
         file << (u_n.split()[0], t)    
 
       ## update 
@@ -505,6 +512,7 @@ def oscparams(Dbarrier=1.):
   params.amp=amp
   params.freq = freq
   params.periodicSource=True  
+  params.meshDim = np.array([100.,100.,100.])*nm_to_um # [um]
 
   return params 
 
@@ -538,45 +546,75 @@ def test5i(Dbarrier=1.,pickleName="test.pkl"):
   plt.gcf().savefig("test5.png") 
 
 
-def test6():
-  pickleName ="Ddist.pkl"
-  nds = 3
-  ds = 10**np.linspace(1,3,nds)
-  Dbarrier  = 0.1 
-  params = oscparams(Dbarrier=Dbarrier)
+def test6(arg="diffs"):
+  ## reset for each compatment 
+  params = oscparams()
   params.cBuff1 = 0. # conc buffer [uM] 
-
+  
   steps = 100
-  dt = 1.
+  params.steps = steps 
+  params.dt = 1
+  
+  ## test
+  
 
-  if 1:
-    concArA2 = np.zeros([steps,nds])  
-    concArA3 = np.zeros([steps,nds])  
-    for j, d in enumerate(ds):
-        params.meshDim = np.array([d,100.,100.]) *nm_to_um # uM
-        results = Problem(params=params)
-        tsij = results.ts
-        concsij = results.concs  
-        concArA2[:,j] = concsij[:,idxA2]
-        concArA3[:,j] = concsij[:,idxA3]
+  nvars= 3
+  if(arg=="diffs"):
+    vars = 10**np.linspace(-1.,1,nvars) 
+    pickleName ="Ddiffs.pkl"
+
+  if(arg=="dists"):
+    vars = 10**np.linspace(1.8,2.2,nvars) 
+    vars = 10**np.linspace(1,3,nvars) 
+    pickleName ="Ddists.pkl"
+
+  if(arg=="buffs"):
+    vars = np.linspace(0,100,nvars)    
+    pickleName ="Dbuffs.pkl"
+
+  concArA2 = np.zeros([steps,nvars])  
+  concArA3 = np.zeros([steps,nvars])  
+
+  for j, var in enumerate(vars):
+    if arg=="diffs":
+        params.D1 = var  
+    if arg=="dists":
+        params.meshDim = np.array([var,100.,100.])*nm_to_um # [um]
+    if arg=="buffs":
+        params.D1 = 1. # 
+        params.cBuff1 = var  
+
+    results = Problem(params=params)
+    concsij = results.concs  
+    tsij = results.ts  
+    concArA2[:,j] = concsij[:,idxA2]
+    concArA3[:,j] = concsij[:,idxA3]
+
+
+  concs =  [concArA2,concArA3]       
+  writepickle(pickleName,tsij,concs,vars=vars)
     
-    concs =  [concArA2,concArA3]       
-    writepickle(pickleName,tsij,concs)
-      
-  tsij,concsr = readpickle(pickleName)
+  tsij,concsr,vars = readpickle(pickleName)
   concArA2 = concsr[0]
   concArA3 = concsr[1]
-  
-  
+    
   j=0   
-  styles=['k-','k-.','k.']
-  plt.plot(tsij,concArA3[:,j],styles[j],label="d: %f [nm] " % ds[j])
+  styles2=['k-','k-.','k.']
+  styles3=['b-','b-.','b.']
+  plt.plot(tsij,concArA2[:,j],styles2[j],label="A2, v: %3.1f [] " % vars[j])
+  plt.plot(tsij,concArA3[:,j],styles3[j],label="A3, v: %3.1f [] " % vars[j])
   j=1    
-  plt.plot(tsij,concArA3[:,j],styles[j],label="d: %f [nm] " % ds[j])
+  plt.plot(tsij,concArA2[:,j],styles2[j],label="A2, v: %3.1f [] " % vars[j])
+  plt.plot(tsij,concArA3[:,j],styles3[j],label="A3, v: %3.1f [] " % vars[j])
+  
   j=2    
-  plt.plot(tsij,concArA3[:,j],styles[j],label="d: %f [nm] " % ds[j])
+  plt.plot(tsij,concArA2[:,j],styles2[j],label="A2, v: %3.1f [] " % vars[j])
+  plt.plot(tsij,concArA3[:,j],styles3[j],label="A3, v: %3.1f [] " % vars[j])
+  
   plt.legend(loc=2)    
-  plt.gcf().savefig("test6.png")   
+  
+
+  plt.gcf().savefig(arg+".png")   
   
 
 
@@ -624,6 +662,7 @@ if __name__ == "__main__":
   import sys
   msg = helpmsg()
   remap = "none"
+  verbose = True
 
   if len(sys.argv) < 2:
       raise RuntimeError(msg)
@@ -647,7 +686,7 @@ if __name__ == "__main__":
       test5(np.int(sys.argv[i+1]))
       quit()
     if(arg=="-test6"): 
-      test6()
+      test6(sys.argv[i+1])
       quit()
   
 
