@@ -17,7 +17,8 @@ print "WARNING: should test time-dependent soln of code against analytical resul
 # Concentrations [uM]
 # Time [ms] 
 # Diff constants [um^2/ms]  
-#paraview=True  
+paraview=True  
+paraview=False 
 verbose=False 
 idxA1 = 0 # PDE 
 idxA2 = 2 # left compartment 
@@ -574,6 +575,21 @@ def test6(arg="diffs"):
     vars = 10**np.linspace(1,3,nvars) 
     pickleName ="Ddists.pkl"
 
+  if(arg=="distsLag"):
+    #vars = 10**np.linspace(1.8,2.2,nvars) 
+    nvars = 10 
+    vars = 10**np.linspace(1,2.5,nvars) 
+    steps = 1000 
+    params.dt = 0.5
+
+    # debug 
+    #nvars = 3
+    #vars = 10**np.linspace(1,3,nvars) 
+
+    params.steps = steps 
+    pickleName ="Ddistslag.pkl"
+
+
   if(arg=="buffs"):
     #vars = np.linspace(0,100,nvars)    
     vars = 10**np.linspace(1,3,nvars) 
@@ -586,7 +602,8 @@ def test6(arg="diffs"):
   for j, var in enumerate(vars):
     if arg=="diffs":
         params.D1 = var  
-    if arg=="dists":
+
+    if (arg=="dists" or arg=="distsLag"):
         vol = 100.*100*100.
         yz = np.sqrt(vol/var)
         conservVol=True
