@@ -17,8 +17,7 @@ print "WARNING: should test time-dependent soln of code against analytical resul
 # Concentrations [uM]
 # Time [ms] 
 # Diff constants [um^2/ms]  
-paraview=True  
-paraview=False 
+#paraview=True  
 verbose=False 
 idxA1 = 0 # PDE 
 idxA2 = 2 # left compartment 
@@ -672,8 +671,8 @@ def test7():
 
 
   params = oscparams(Dbarrier=-1)
-  steps =10
-  dt = 10
+  steps =100
+  dt = 5  
 
   params.steps=steps
   params.dt = dt
