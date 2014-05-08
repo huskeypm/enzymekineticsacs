@@ -17,7 +17,7 @@ print "WARNING: should test time-dependent soln of code against analytical resul
 # Concentrations [uM]
 # Time [ms] 
 # Diff constants [um^2/ms]  
-#paraview=True  
+paraview=False 
 verbose=False 
 idxA1 = 0 # PDE 
 idxA2 = 2 # left compartment 
