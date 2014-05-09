@@ -3,37 +3,64 @@ import scipy.integrate
 
 
 
-a1=5;
+v0=5;
 kappa1=1.;
-k1=1;
-b1=1.;
-alpha1=1;
-beta1=1.; #0.6;
-gamma1=1;
-delta1=1; #0.8;
-n=12.
+ikm=1;
+k0=1.;
+v1=1;
+k1=1.; #0.6;
+v2=1;
+k2=1; #0.8;
+p=12.
 
+# single compartment 
 def goodwinmodel(t,y0,a,title=""): 
   def f(y,t,a):
-        X=y[0]
-        Y=y[1]
-        Z=y[2]
- 
+    X,Y,Z = y
+    v0,kappa1,ikm,k0,v1,k1,v2,k2,p = a 
 
-        #dt =[a1/(kappa1+k1*Z**n) - b1*X,  alpha1*X - beta1*Y, gamma1*Y - delta1*Z]
-        #dt =[a1/(kappa1+k1*Z**n),0,0]
-        dt =[a1/(kappa1+k1*Z**n)-b1*X,alpha1*X - beta1*Y,gamma1*Y- delta1*Z]
-        return dt
+    dt =[v0/(kappa1+ikm*Z**p)-k0*X,\
+      v1*X - k1*Y,\
+      v2*Y- k2*Z]
+    return dt
+
+  y = scipy.integrate.odeint(f,y0,t,args=(a,))
+  return y 
+
+# left compartment 
+def goodwinmodelComp1(t,y0,a,title=""): 
+  def f(y,t,a):
+    X,Y,Z = y
+    v0,kappa1,ikm,k0,v1,k1,v2,k2,p = a 
+
+    dt =[v0/(kappa1+ikm*Z**p)-k0*X,\
+      v1*X ,\
+      0] # no reaction      
+    return dt
+
+  y = scipy.integrate.odeint(f,y0,t,args=(a,))
+  return y 
+
+# left compartment 
+def goodwinmodelComp3(t,y0,a,title=""): 
+  def f(y,t,a):
+    X,Y,Z = y
+    v0,kappa1,ikm,k0,v1,k1,v2,k2,p = a 
+
+    dt =[0, # no reaction
+      0 - k1*Y,\
+      v2*Y- k2*Z]
+    return dt
 
   y = scipy.integrate.odeint(f,y0,t,args=(a,))
   return y 
 
 
 def doit():
-  t = scipy.linspace(0.,250.,100)
+  t = scipy.linspace(0.,100.,1000)
   #t = scipy.linspace(0.,50.,25)
   y0=[0,0,1]
-  ks = [0]
+  ks = [v0,kappa1,ikm,k0,v1,k1,v2,k2,p]
   y=goodwinmodel(t,y0,ks)
   
   plt.plot(t,y[:,0],"r-",label="x")
