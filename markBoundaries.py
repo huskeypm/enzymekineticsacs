@@ -20,13 +20,18 @@ class RightBoundary(SubDomain):
     return x[0] >= cubeDim[0]-DOLFIN_EPS and on_boundary 
 
 
-def cube(mode="-cube"):
+def cube(mode="-cube",small=False):
   # define mesh, function space
-  mesh = UnitCube(8,8,8)
+  if small:
+    filePrefix = "smallcube"
+    mesh = UnitCube(2,2,2)
+  else:
+    filePrefix = "cube"
+    mesh = UnitCube(8,8,8)
   V = FunctionSpace(mesh,"CG",1)
   mesh.coordinates()[:] = mesh.coordinates()[:] * cubeDim
 
-  filePrefix = "cube"
+   
 
   # define subdomains 
   subdomains = MeshFunction("uint",mesh,2)
@@ -105,7 +110,8 @@ Notes:
 #      cube(mode=arg)
 #    if(arg=="-nuo"):
 #      nuo()
-  cube()
+#  cube()
+  cube(small=True)
 
 
 

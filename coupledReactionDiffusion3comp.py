@@ -310,7 +310,7 @@ def Problem(params = Params()):
   
   # operator splitting 
   #opSplit=True # just turning off reaction vA2
-  if(params.goodwinReaction):
+  if(params.goodwinReaction=="explicit"):
     # no rxn in PDE part   
     #RHSA1 
     #RHSB1 
@@ -320,11 +320,6 @@ def Problem(params = Params()):
     # dC/dt =v2*B -k2*C
 
     p = params
-    #RHSA2 += ( p.v0 / ((1+cB2_n/p.Km)**p.p)*vA2 - p.k0*cA2_n*vA2)*dx
-    #RHSB2 += ( p.v1*cA2_n*vB2 - p.k1*cB2_n*vB2)*dx
-    #RHSC3 += ( p.v2*cB3_n*vC3 - p.k2*cC3_n*vC3)*dx
-
-    # test 
     #  ->A
     ikm = 1/p.Km
     #RHSA2 +=  (1/volume_frac12)*(p.v0/(1+(ikm*cC2_n)**p.p))*vA2*dx
@@ -347,12 +342,29 @@ def Problem(params = Params()):
 
     # C-> 0 
     RHSC2 += -(1/volume_frac12)*p.k2*cC2_n*vC2*dx
-  
- 
-    #kBC = Constant(1.) 
-    #RHSB3 += -kBC*cB3_n*vB3*dx
-    #RHSC3 +=  kBC*cB3_n*vC3*dx
 
+  if(params.goodwinReaction=="opsplit"):
+    1
+
+  ## get indices/values (needed for operator splitting) 
+  indcA1, indcB1, indcC1 = set(), set(), set()
+  indcA2, indcB2, indcC2 = set(), set(), set()
+  indcA3, indcB3, indcC3 = set(), set(), set()
+  dm_cA1, dm_cB1, dm_cC1 = ME.sub(idxA1).dofmap(), ME.sub(idxB1).dofmap(),ME.sub(idxC1).dofmap()
+  dm_cA2, dm_cB2, dm_cC2 = ME.sub(idxA2).dofmap(), ME.sub(idxB2).dofmap(),ME.sub(idxC2).dofmap()
+  dm_cA3, dm_cB3, dm_cC3 = ME.sub(idxA3).dofmap(), ME.sub(idxB3).dofmap(),ME.sub(idxC3).dofmap()
+  for cell in cells(mesh):
+      indcA1.update(dm_cA1.cell_dofs(cell.index())); indcB1.update(dm_cB1.cell_dofs(cell.index())); indcC1.update(dm_cC1.cell_dofs(cell.index()))
+      indcA2.update(dm_cA2.cell_dofs(cell.index())); indcB2.update(dm_cB2.cell_dofs(cell.index())); indcC2.update(dm_cC2.cell_dofs(cell.index()))
+      indcA3.update(dm_cA3.cell_dofs(cell.index())); indcB3.update(dm_cB3.cell_dofs(cell.index())); indcC3.update(dm_cC3.cell_dofs(cell.index()))
+
+  indcA1= np.fromiter(indcA1, dtype=np.uintc); indcB1= np.fromiter(indcB1, dtype=np.uintc); indcC1= np.fromiter(indcC1, dtype=np.uintc)
+  indcA2= np.fromiter(indcA2, dtype=np.uintc); indcB2= np.fromiter(indcB2, dtype=np.uintc); indcC2= np.fromiter(indcC2, dtype=np.uintc)
+  indcA3= np.fromiter(indcA3, dtype=np.uintc); indcB3= np.fromiter(indcB3, dtype=np.uintc); indcC3= np.fromiter(indcC3, dtype=np.uintc)
+
+
+    
+  
   # periodic source
   expr = Expression("a*sin(b*t)",a=params.amp,b=params.freq,t=0)
   if params.periodicSource:
@@ -421,16 +433,47 @@ def Problem(params = Params()):
 
   
   # Step in time
-  t   = 0.0
+  ti   = 0.0
+  t = ti
   T = steps*float(dt)
   tots=np.zeros([steps,nDOF])
   concs=np.zeros([steps,nDOF])
   ts=np.zeros(steps)
   j=0
+
+  # entire simulation interval
+  print "put elsewhere" 
+  from goodwin import *
+  tis = scipy.linspace(ti,T,steps)
+  y0s = np.array([params.cA1init,params.cA1init,params.cA1init])
+  ks = [0]
+  yTs = goodwinmodel(tis,y0s,ks)
+  #print yTs[-1]
+  #quit()
   
-  while (t   < T):
+  
+  while (t  < T):
       #print "t", t
       solver.solve(problem, u_n.vector())
+
+      # operator splitting 
+      if(params.goodwinReaction=="opsplit"): # after solve? 
+        u_array = u_n.vector().array() 
+        tis = scipy.linspace(t,t+float(dt),steps)
+        y0s = np.array([u_array[indcA2],u_array[indcB2], u_array[indcC2]])
+        y0s = np.ndarray.flatten(y0s)
+        #print y0s
+        #print yTs
+        yTs = goodwinmodel(tis,y0s,ks)
+        yTs = yTs[-1] 
+        u_array[indcA2]=yTs[0]; u_array[indcB2]=yTs[1];u_array[indcC2]=yTs[2];
+        #print "%f %f %f" %(u_array[indcA2], u_array[indcB2],u_array[indcC2])
+        u_n.vector()[:] = u_array
+
+      # todo compartment
+      # goodwincompart1
+      # goodwincompart2 
+
   
       ## store 
       # check values
