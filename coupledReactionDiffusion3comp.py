@@ -326,12 +326,12 @@ def Problem(params = Params()):
 
     # test 
     #  ->A
-    #kA = Constant(1.) 
     ikm = 1/p.Km
-    #p = 1.
-    #RHSA2 +=  kA*vA2*dx
-    #RHSA2 +=  (kA/(1+(km*cC2_n)**p))*vA2*dx
-    RHSA2 +=  (1/volume_frac12)*(p.v0/(1+(ikm*cC2_n)**p.p))*vA2*dx
+    #RHSA2 +=  (1/volume_frac12)*(p.v0/(1+(ikm*cC2_n)**p.p))*vA2*dx
+    m = ikm*cC2_n
+    m = m**p.p
+    #m = m*m*m * m*m*m * m*m*m * m*m*m 
+    RHSA2 +=  (1/volume_frac12)*(p.v0/(1+m))*vA2*dx
  
     # A->B 
     # dA/dt = -k0*A
