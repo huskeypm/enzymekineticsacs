@@ -134,12 +134,12 @@ class Params():
   goodwinReaction = False
   v0 = 5.  #360.
   Km = 1.
-  p = 1.  #12.
+  p = 2.  #12.
   k0 = 1.
   v1 = 1.
-  k1 = 0.6
+  k1 = 1.0 
   v2 = 1.
-  k2 = 0.8
+  k2 = 1.0 
 
   # geometry 
   #np.max(mesh.coordinates()[:],axis=0) - np.min(mesh.coordinates()[:],axis=0) 
@@ -161,13 +161,13 @@ class InitialConditions(Expression):
     if 1:
       values[0] = self.params.cA1init
       values[1] = self.params.cB1init
-      values[2] = self.params.cB1init
+      values[2] = self.params.cC1init
       values[3] = self.params.cA2init
       values[4] = self.params.cB2init
-      values[5] = self.params.cB2init
+      values[5] = self.params.cC2init
       values[6] = self.params.cA3init
       values[7] = self.params.cB3init
-      values[8] = self.params.cB3init
+      values[8] = self.params.cC3init
   def value_shape(self):
     return (nDOF,)
 
@@ -325,10 +325,33 @@ def Problem(params = Params()):
     #RHSC3 += ( p.v2*cB3_n*vC3 - p.k2*cC3_n*vC3)*dx
 
     # test 
-    RHSA2 += -Constant(0.1)*cA2_n*vA2*dx
-    RHSB2 +=  Constant(0.1)*cA2_n*vB2*dx
-    RHSB3 += -Constant(0.2)*cB3_n*vB3*dx
-    RHSC3 +=  Constant(0.2)*cB3_n*vC3*dx
+    #  ->A
+    #kA = Constant(1.) 
+    ikm = 1/p.Km
+    #p = 1.
+    #RHSA2 +=  kA*vA2*dx
+    #RHSA2 +=  (kA/(1+(km*cC2_n)**p))*vA2*dx
+    RHSA2 +=  (1/volume_frac12)*(p.v0/(1+(ikm*cC2_n)**p.p))*vA2*dx
+ 
+    # A->B 
+    # dA/dt = -k0*A
+    # dB/dt = +v1*B
+    RHSA2 += -(1/volume_frac12)*p.k0*cA2_n*vA2*dx
+    RHSB2 +=  (1/volume_frac12)*p.v1*cA2_n*vB2*dx
+
+    # B->C 
+    # dB/dt = -k1*B
+    # dC/dt = +v2*C
+    RHSB2 += -(1/volume_frac12)*p.k1*cB2_n*vB2*dx
+    RHSC2 +=  (1/volume_frac12)*p.v2*cB2_n*vC2*dx
+
+    # C-> 0 
+    RHSC2 += -(1/volume_frac12)*p.k2*cC2_n*vC2*dx
+  
+ 
+    #kBC = Constant(1.) 
+    #RHSB3 += -kBC*cB3_n*vB3*dx
+    #RHSC3 +=  kBC*cB3_n*vC3*dx
 
   # periodic source
   expr = Expression("a*sin(b*t)",a=params.amp,b=params.freq,t=0)
