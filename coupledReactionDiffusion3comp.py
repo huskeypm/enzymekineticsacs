@@ -251,6 +251,7 @@ def Problem(params = Params()):
   
   ##
   volumeDom1 = Constant(assemble(Constant(1.0)*dx,mesh=mesh))
+  params.volumeDom1 = volumeDom1
   area = Constant(assemble(Constant(1.0)*ds(marker12),mesh=mesh))
   #was volume_scalar2 = Constant(4.*float(volumeDom1))
   volume_frac12 = volumeDom1/params.volume_scalar2 
@@ -343,8 +344,6 @@ def Problem(params = Params()):
     # C-> 0 
     RHSC2 += -(1/volume_frac12)*p.k2*cC2_n*vC2*dx
 
-  if(params.goodwinReaction=="opsplit"):
-    1
 
   ## get indices/values (needed for operator splitting) 
   indcA1, indcB1, indcC1 = set(), set(), set()
@@ -436,9 +435,9 @@ def Problem(params = Params()):
   ti   = 0.0
   t = ti
   T = steps*float(dt)
-  tots=np.zeros([steps,nDOF])
-  concs=np.zeros([steps,nDOF])
-  ts=np.zeros(steps)
+  tots=np.zeros([steps+1,nDOF])
+  concs=np.zeros([steps+1,nDOF])
+  ts=np.zeros(steps+1)
   j=0
 
   # entire simulation interval
@@ -446,13 +445,16 @@ def Problem(params = Params()):
   from goodwin import *
   tis = scipy.linspace(ti,T,steps)
   y0s = np.array([params.cA1init,params.cA1init,params.cA1init])
-  ks = [0]
+  p = params
+  ks = np.array([p.v0,1.0,1/p.Km,p.k0,p.v1,p.k1,p.v2,p.k2,p.p])            
   yTs = goodwinmodel(tis,y0s,ks)
   #print yTs[-1]
   #quit()
   
   
   while (t  < T):
+      j+=1
+      t   += float(dt)
       #print "t", t
       solver.solve(problem, u_n.vector())
 
@@ -470,9 +472,61 @@ def Problem(params = Params()):
         #print "%f %f %f" %(u_array[indcA2], u_array[indcB2],u_array[indcC2])
         u_n.vector()[:] = u_array
 
-      # todo compartment
-      # goodwincompart1
-      # goodwincompart2 
+      # operator splitting 
+      if(params.goodwinReaction=="opsplit2"): # after solve? 
+        u_array = u_n.vector().array() 
+        tis = scipy.linspace(t,t+float(dt),steps)
+
+        # left side 
+        y0s = np.array([u_array[indcA2],u_array[indcB2], u_array[indcC2]])
+        y0s = np.ndarray.flatten(y0s)
+        #yTs = goodwinmodelComp1(tis,y0s,ks)
+        yTs = goodwinmodel(tis,y0s,ks)
+        yTs = yTs[-1] 
+        u_array[indcA2]=yTs[0]; u_array[indcB2]=yTs[1];u_array[indcC2]=yTs[2];
+
+        # right side 
+        y0s = np.array([u_array[indcA3],u_array[indcB3], u_array[indcC3]])
+        y0s = np.ndarray.flatten(y0s)
+        #yTs = goodwinmodel(tis,y0s,ks)
+        yTs = goodwinmodelComp3(tis,y0s,ks)
+        yTs = yTs[-1] 
+        u_array[indcA3]=yTs[0]; u_array[indcB3]=yTs[1];u_array[indcC3]=yTs[2];
+
+
+        #print "%f %f %f" %(u_array[indcA2], u_array[indcB2],u_array[indcC2])
+        u_n.vector()[:] = u_array
+
+      # operator splitting 
+      if(params.goodwinReaction=="opsplitTest"): # after solve? 
+        import testrxn
+        u_array = u_n.vector().array() 
+        tis = scipy.linspace(t,t+float(dt),steps)
+
+        # left side 
+        y0s = np.array([u_array[indcA2],u_array[indcB2], u_array[indcC2]])
+        y0s = np.ndarray.flatten(y0s)
+        #yTs = goodwinmodelComp1(tis,y0s,ks)
+        ks = [p.v0,p.v1,p.v2]
+        #yTs = testrxn.rxnComp2(tis,y0s,ks)
+        yTs = testrxn.rxn(tis,y0s,ks)
+        yTs = yTs[-1] 
+        u_array[indcA2]=yTs[0]; u_array[indcB2]=yTs[1];u_array[indcC2]=yTs[2];
+
+        # right side 
+        y0s = np.array([u_array[indcA3],u_array[indcB3], u_array[indcC3]])
+        y0s = np.ndarray.flatten(y0s)
+        #yTs = goodwinmodel(tis,y0s,ks)
+        ks = [p.k0,p.k1,p.k2]
+        #yTs = testrxn.rxnComp3(tis,y0s,ks)
+        yTs = testrxn.rxn(tis,y0s,ks)
+        yTs = yTs[-1] 
+        #print yTs
+        u_array[indcA3]=yTs[0]; u_array[indcB3]=yTs[1];u_array[indcC3]=yTs[2];
+
+
+        #print "%f %f %f" %(u_array[indcA2], u_array[indcB2],u_array[indcC2])
+        u_n.vector()[:] = u_array
 
   
       ## store 
@@ -502,8 +556,6 @@ def Problem(params = Params()):
 
       ## update 
       #file << (u,vB2)
-      j+=1
-      t   += float(dt)
       expr.t = t 
       u0.vector()[:] = u_n.vector()
   
