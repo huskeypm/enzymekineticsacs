@@ -1,4 +1,5 @@
 # 
+import scipy
 import matplotlib.pylab as plt
 class empty:pass
 
@@ -132,14 +133,16 @@ class Params():
 
   # reaction
   goodwinReaction = False
-  v0 = 5.  #360.
   Km = 1.
   p = 2.  #12.
-  k0 = 1.
+  v0 = 5.  #360.
+  k0 = 5.
   v1 = 1.
-  k1 = 1.0 
+  k1 = 1. 
   v2 = 1.
-  k2 = 1.0 
+  k2 = 1. 
+  v3 = 1.
+  k3 = 1. 
 
   # geometry 
   #np.max(mesh.coordinates()[:],axis=0) - np.min(mesh.coordinates()[:],axis=0) 
@@ -316,6 +319,7 @@ def Problem(params = Params()):
     #RHSA1 
     #RHSB1 
 
+    raise RuntimeError("Broken, since using new var names. See goodwin.py")
     # dA/dt =v0 / (1+ (C/K)^p) - k1*A
     # dB/dt =v1*A -k2*B
     # dC/dt =v2*B -k2*C
@@ -441,13 +445,13 @@ def Problem(params = Params()):
   j=0
 
   # entire simulation interval
-  print "put elsewhere" 
-  from goodwin import *
-  tis = scipy.linspace(ti,T,steps)
-  y0s = np.array([params.cA1init,params.cA1init,params.cA1init])
-  p = params
-  ks = np.array([p.v0,1.0,1/p.Km,p.k0,p.v1,p.k1,p.v2,p.k2,p.p])            
-  yTs = goodwinmodel(tis,y0s,ks)
+#  print "put elsewhere" 
+#  from goodwin import *
+#  tis = scipy.linspace(ti,T,steps)
+#  y0s = np.array([params.cA1init,params.cA1init,params.cA1init])
+#  p = params
+#  ks = np.array([1.0,1/p.Km,p.p,p.v0,p.k0,p.v1,p.k1,p.v2,p.k2])            
+#  yTs = goodwinmodel(tis,y0s,ks)
   #print yTs[-1]
   #quit()
   
@@ -474,6 +478,8 @@ def Problem(params = Params()):
 
       # operator splitting 
       if(params.goodwinReaction=="opsplit2"): # after solve? 
+        import goodwin 
+        p = params
         u_array = u_n.vector().array() 
         tis = scipy.linspace(t,t+float(dt),steps)
 
@@ -481,15 +487,17 @@ def Problem(params = Params()):
         y0s = np.array([u_array[indcA2],u_array[indcB2], u_array[indcC2]])
         y0s = np.ndarray.flatten(y0s)
         #yTs = goodwinmodelComp1(tis,y0s,ks)
-        yTs = goodwinmodel(tis,y0s,ks)
+        ks = np.array([1.0,1/p.Km,p.p,p.v0,p.v1,p.v2,p.v3])
+        yTs = goodwin.rxn(tis,y0s,ks)
         yTs = yTs[-1] 
         u_array[indcA2]=yTs[0]; u_array[indcB2]=yTs[1];u_array[indcC2]=yTs[2];
 
         # right side 
         y0s = np.array([u_array[indcA3],u_array[indcB3], u_array[indcC3]])
         y0s = np.ndarray.flatten(y0s)
-        #yTs = goodwinmodel(tis,y0s,ks)
-        yTs = goodwinmodelComp3(tis,y0s,ks)
+        ks = np.array([1.0,1/p.Km,p.p,p.k0,p.k1,p.k2,p.k3])
+        yTs = goodwin.rxn(tis,y0s,ks)
+        #yTs = goodwinmodelComp3(tis,y0s,ks)
         yTs = yTs[-1] 
         u_array[indcA3]=yTs[0]; u_array[indcB3]=yTs[1];u_array[indcC3]=yTs[2];
 

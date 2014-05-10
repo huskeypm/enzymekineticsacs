@@ -6,61 +6,59 @@ import scipy.integrate
 kappa1=1.;
 ikm=1;
 p=12.
-v0=5;
-k0=1.;
-v1=1;
-k1=1.; #0.6;
-v2=1;
-k2=1; #0.8;
+k0=5;
+k1=1;
+k2=1;
+k3=1; #0.8;
 
 # single compartment 
-def goodwinmodel(t,y0,a,title=""): 
+def rxn(t,y0,a,title=""): 
   def f(y,t,a):
     X,Y,Z = y
-    kappa1,ikm,p,v0,k0,v1,k1,v2,k2 = a 
+    kappa1,ikm,p,k0,k1,k2,k3 = a 
 
-    dt =[v0/(kappa1+ikm*Z**p)-k0*X,\
-      v1*X - k1*Y,\
-      v2*Y- k2*Z]
+    dt =[k0/(kappa1+ikm*Z**p)-k1*X,\
+      k1*X - k2*Y,\
+      k2*Y- k3*Z]
     return dt
 
   y = scipy.integrate.odeint(f,y0,t,args=(a,))
   return y 
-
-# left compartment 
-def goodwinmodelComp1(t,y0,a,title=""): 
-  def f(y,t,a):
-    X,Y,Z = y
-    kappa1,ikm,p,v0,k0,v1,k1,v2,k2 = a 
-
-    dt =[v0/(kappa1+ikm*Z**p)-k0*X,\
-      v1*X ,\
-      0] # no reaction      
-    return dt
-
-  y = scipy.integrate.odeint(f,y0,t,args=(a,))
-  return y 
-
-# left compartment 
-def goodwinmodelComp3(t,y0,a,title=""): 
-  def f(y,t,a):
-    X,Y,Z = y
-    kappa1,ikm,p,v0,k0,v1,k1,v2,k2 = a 
-
-    dt =[0, # no reaction
-      0 - k1*Y,\
-      v2*Y- k2*Z]
-    return dt
-
-  y = scipy.integrate.odeint(f,y0,t,args=(a,))
-  return y 
-
+#
+## left compartment 
+#def goodwinmodelComp1(t,y0,a,title=""): 
+#  def f(y,t,a):
+#    X,Y,Z = y
+#    kappa1,ikm,p,k0,k1,k2,k3 = a 
+#
+#    dt =[k0/(kappa1+ikm*Z**p)-k1*X,\
+#      k1*X ,\
+#      0] # no reaction      
+#    return dt
+#
+#  y = scipy.integrate.odeint(f,y0,t,args=(a,))
+#  return y 
+#
+## left compartment 
+#def goodwinmodelComp3(t,y0,a,title=""): 
+#  def f(y,t,a):
+#    X,Y,Z = y
+#    kappa1,ikm,p,k0,k1,k2,k3 = a 
+#
+#    dt =[0, # no reaction
+#      0 - k2*Y,\
+#      k2*Y- k3*Z]
+#    return dt
+#
+#  y = scipy.integrate.odeint(f,y0,t,args=(a,))
+#  return y 
+#
 
 def doit():
   t = scipy.linspace(0.,100.,1000)
   #t = scipy.linspace(0.,50.,25)
   y0=[0,0,1]
-  ks = [kappa1,ikm,p,v0,k0,v1,k1,v2,k2]
+  ks = [kappa1,ikm,p,k0,k1,k2,k3]
   y=goodwinmodel(t,y0,ks)
   
   plt.plot(t,y[:,0],"r-",label="x")
