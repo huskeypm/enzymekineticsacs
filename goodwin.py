@@ -3,21 +3,21 @@ import scipy.integrate
 
 
 
-v0=5;
 kappa1=1.;
 ikm=1;
+p=12.
+v0=5;
 k0=1.;
 v1=1;
 k1=1.; #0.6;
 v2=1;
 k2=1; #0.8;
-p=12.
 
 # single compartment 
 def goodwinmodel(t,y0,a,title=""): 
   def f(y,t,a):
     X,Y,Z = y
-    v0,kappa1,ikm,k0,v1,k1,v2,k2,p = a 
+    kappa1,ikm,p,v0,k0,v1,k1,v2,k2 = a 
 
     dt =[v0/(kappa1+ikm*Z**p)-k0*X,\
       v1*X - k1*Y,\
@@ -31,7 +31,7 @@ def goodwinmodel(t,y0,a,title=""):
 def goodwinmodelComp1(t,y0,a,title=""): 
   def f(y,t,a):
     X,Y,Z = y
-    v0,kappa1,ikm,k0,v1,k1,v2,k2,p = a 
+    kappa1,ikm,p,v0,k0,v1,k1,v2,k2 = a 
 
     dt =[v0/(kappa1+ikm*Z**p)-k0*X,\
       v1*X ,\
@@ -45,7 +45,7 @@ def goodwinmodelComp1(t,y0,a,title=""):
 def goodwinmodelComp3(t,y0,a,title=""): 
   def f(y,t,a):
     X,Y,Z = y
-    v0,kappa1,ikm,k0,v1,k1,v2,k2,p = a 
+    kappa1,ikm,p,v0,k0,v1,k1,v2,k2 = a 
 
     dt =[0, # no reaction
       0 - k1*Y,\
@@ -60,7 +60,7 @@ def doit():
   t = scipy.linspace(0.,100.,1000)
   #t = scipy.linspace(0.,50.,25)
   y0=[0,0,1]
-  ks = [v0,kappa1,ikm,k0,v1,k1,v2,k2,p]
+  ks = [kappa1,ikm,p,v0,k0,v1,k1,v2,k2]
   y=goodwinmodel(t,y0,ks)
   
   plt.plot(t,y[:,0],"r-",label="x")
