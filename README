@@ -1,4 +1,5 @@
 
+\section{Setup} 
 Source dolfin files
 source ucsd.bash  
 
@@ -14,4 +15,13 @@ locally
 ssh -L 7001:localhost:7001 chemcca11.ucsd.edu
 
 )
+
+
+\section{Index} 
+goodwinPDEtests  - validating implementation 
+acstalks - first pass at data for conference
+compart - First pass at data for manuscript using ODEs
+goodwin - ODE version of goodwin oscillator
+goodwinPDE - PDE version of goodwin (for manuscript) 
+pdeode - compartmentalized model 
 

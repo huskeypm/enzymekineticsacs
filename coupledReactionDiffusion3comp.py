@@ -1,6 +1,10 @@
 # 
 import scipy
 import matplotlib.pylab as plt
+from plotting import *
+import scipy
+import scipy.integrate
+import testrxn
 class empty:pass
 
 print "WARNING: should test time-dependent soln of code against analytical results" 
@@ -19,6 +23,8 @@ print "WARNING: should test time-dependent soln of code against analytical resul
 # Diff constants [um^2/ms]  
 paraview=False 
 verbose=False 
+
+## WARNING: if changed, must also be reflected in plotting.py
 idxA1 = 0 # PDE 
 idxB1 = 1
 idxC1 = 2
@@ -107,7 +113,9 @@ class Params():
   
 
   # diffusion params 
-  D1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
+  DA1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
+  DB1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
+  DC1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
   D12  = 1000.  # [um^2/ms] Diff const between domain 1 and 2
   D13  = 1000.  # [um^2/ms] Diff const between domain 1 and 3
 
@@ -226,9 +234,11 @@ def PrintSlice(results):
 
 def Problem(params = Params()):
 
-  # get effective diffusion constant based on buffer 
-  D1eff = params.D1 / (1 + params.cBuff1/params.KDBuff1)
-  print "D: %f Dwbuff: %f [um^2/ms]" % (params.D1,D1eff)
+  # get effective diffusion constant (for C only) based on buffer 
+  DA1eff = params.DA1 
+  DB1eff = params.DB1 
+  DC1eff = params.DC1 / (1 + params.cBuff1/params.KDBuff1)
+  print "D: %f Dwbuff: %f [um^2/ms]" % (params.DC1,DC1eff)
   print "dim [um]", params.meshDim
 
   steps = params.steps 
@@ -236,7 +246,9 @@ def Problem(params = Params()):
   # rescale diffusion consants 
 
   dt = Constant(params.dt)
-  D1 = Constant(D1eff)   # diff within domain 1 
+  DA1 = Constant(DA1eff)   # diff within domain 1 
+  DB1 = Constant(DB1eff)   # diff within domain 1 
+  DC1 = Constant(DC1eff)   # diff within domain 1 
   D12 = Constant(params.D12) # diffusionb etween domain 1 and 2 
   D13 = Constant(params.D13)
 
@@ -301,9 +313,9 @@ def Problem(params = Params()):
   #  RHSA1 = -Dij*inner(grad(c),grad(vA1))*dx  
   #  RHSB1 = -Dij*inner(grad(cb),grad(vB1))*dx 
   #else:
-  RHSA1 = -inner(D1*grad(cA1_n),grad(vA1))*dx  
-  RHSB1 = -inner(D1*grad(cB1_n),grad(vB1))*dx 
-  RHSC1 = -inner(D1*grad(cC1_n),grad(vC1))*dx 
+  RHSA1 = -inner(DA1*grad(cA1_n),grad(vA1))*dx  
+  RHSB1 = -inner(DB1*grad(cB1_n),grad(vB1))*dx 
+  RHSC1 = -inner(DC1*grad(cC1_n),grad(vC1))*dx 
   RHSA2 = Constant(0)*vA2*dx # for consistency
   RHSB2 = Constant(0)*vB2*dx
   RHSC2 = Constant(0)*vC2*dx
@@ -439,9 +451,9 @@ def Problem(params = Params()):
   ti   = 0.0
   t = ti
   T = steps*float(dt)
-  tots=np.zeros([steps+1,nDOF])
-  concs=np.zeros([steps+1,nDOF])
-  ts=np.zeros(steps+1)
+  tots=np.zeros([steps+2,nDOF])
+  concs=np.zeros([steps+2,nDOF])
+  ts=np.zeros(steps+2)
   j=0
 
   # entire simulation interval
@@ -619,7 +631,9 @@ def test4():
   ## checked that domains remain constant 
   if 0: 
     params.cA1init=0.0000  
-    params.D1=0.        
+    params.DA1=0.        
+    params.DB1=0.        
+    params.DC1=0.        
     params.cA2init=100.
     params.cA3init=0.0000
     params.D12=0.; params.D13=0.
@@ -628,7 +642,9 @@ def test4():
   ## conc even in all domains 
   if 0: 
     params.cA1init=0.0000  
-    params.D1=1000.     
+    params.DA1=1000.     
+    params.DB1=1000.     
+    params.DC1=1000.     
     params.cA2init=100.
     params.cA3init=0.0000
     params.D12=1000.; params.D13=1000.
@@ -641,7 +657,9 @@ def test4():
     params.steps = 100
     params.dt = 1 # [ms] 
     params.cA1init=0.0000  
-    params.D1=0.145 # [um^2/ms] DATP 
+    params.DA1=0.145 # [um^2/ms] DATP 
+    params.DB1=0.145 # [um^2/ms] DATP 
+    params.DC1=0.145 # [um^2/ms] DATP 
     params.cA2init=1.
     params.cA3init=0.0000
     params.D12=1000.; params.D13=1000.
@@ -682,7 +700,9 @@ def oscparams(Dbarrier=1.):
   params.cA3init=1.0  
   params.D12 = Df            
   params.D13 = Df            
-  params.D1 = Dbarrier 
+  params.DA1 = Dbarrier 
+  params.DB1 = Dbarrier 
+  params.DC1 = Dbarrier 
   params.amp=amp
   params.freq = freq
   params.periodicSource=True  
@@ -771,7 +791,9 @@ def test6(arg="diffs"):
 
   for j, var in enumerate(vars):
     if arg=="diffs":
-        params.D1 = var  
+        params.DA1 = var  
+        params.DB1 = var  
+        params.DC1 = var  
 
     if (arg=="dists" or arg=="distsLag"):
         vol = 100.*100*100.
@@ -784,7 +806,9 @@ def test6(arg="diffs"):
         print "mesh dim", params.meshDim
 
     if arg=="buffs":
-        params.D1 = 1. # 
+        params.DA1 = 1. # 
+        params.DB1 = 1. # 
+        params.DC1 = 1. # 
         params.cBuff1 = var  
 
     results = Problem(params=params)
@@ -860,7 +884,9 @@ def test7():
       msg =  "Running dist/Deff %f %f" % (dist,Deff)    
       print msg
       params.meshDim = np.array([dist,yz,yz])*nm_to_um # [um]  
-      params.D1 = Deff
+      params.DA1 = Deff
+      params.DB1 = Deff
+      params.DC1 = Deff
       results = Problem(params=params)
       ts = results.ts
       concs = results.concs
@@ -889,6 +915,80 @@ def test8():
   params.goodwinReaction = True
   params.meshName = "smallcube"
   result = Problem(params=params)
+
+
+def figA(steps = 200, dt = 0.01, \
+         DA1=1e9, DB1=1e9, DC1=1e9,\
+         doplot=1):
+  params = Params()
+  
+  print "WRNING: this is a hack, since not updated correctly"
+  params.volumeDom1 = 0.001
+  vols = np.array([params.volumeDom1 , params.volume_scalar2 , params.volume_scalar3])
+  totVols = np.sum(vols)  
+  volFracs = vols/totVols
+  
+  
+  params.p=12.
+  params.D12=1e9; params.D13=1e9; 
+  params.DA1=DA1  
+  params.DB1=DB1  
+  params.DC1=DC1  
+  cA=2; cB=1.5; cC=1.;
+  params.cA1init=cA; params.cA2init=cA; params.cA3init=cA
+  params.cB1init=cB; params.cB2init=cB; params.cB3init=cB
+  params.cC1init=cC; params.cC2init=cC; params.cC3init=cC
+  params.steps = steps
+  params.dt = dt 
+  
+  
+  
+  # exact w small enough time-step 
+  kodes= np.array([5,1,1,1])
+  vs   = np.array([5,1,0,0]) # reaction 1 occurs in compart2 (rxn 2 not)
+  ks   = np.array([0,0,1,1]) # reaction 2 occurs in compart3 (rxn 1 not)
+  
+  # Only works if reaction happens -only- in one of the compartments (otherwise double counting)
+  s2= 1/volFracs[1]
+  s3= 1/volFracs[2]
+  params.v0 = s2*vs[0]
+  params.k0 = s3*ks[0]
+  params.v1 = s2*vs[1]
+  params.k1 = s3*ks[1]
+  params.v2 = s2*vs[2]
+  params.k2 = s3*ks[2]
+  params.v3 = s2*vs[3]
+  params.k3 = s3*ks[3]
+  
+  tode = scipy.linspace(0.,params.steps*params.dt,params.steps)
+  y0ode=[params.cA2init,params.cB2init,params.cC2init]
+  
+  params.goodwinReaction = "opsplit2"
+  params.meshName = "smallcube"
+  results = Problem(params=params) 
+  results.volFracs = volFracs 
+  results.params = params 
+
+  # for compare 
+  import goodwin
+  ks = np.concatenate(([1,1/params.Km,params.p],kodes))
+  yode=goodwin.rxn(tode,y0ode,ks)
+      
+  if doplot:
+    # plot first set 
+    plotconcs1(results.ts,results.concs)
+    plotconcs2(results.ts,results.concs)
+    plotconcssum(results.ts,results.concs)
+  
+    plotODE(tode,yode)
+    plt.gcf().savefig("testin.png",dpi=300)
+  
+    plt.figure()
+    plotODE(tode,yode)
+
+#print yode
+  return results, tode, yode
+
 
   
     
@@ -971,6 +1071,9 @@ if __name__ == "__main__":
       quit()
     if(arg=="-test8"): 
       test8()#sys.argv[i+1])
+      quit()
+    if(arg=="-figA"): 
+      figA()#sys.argv[i+1])
       quit()
   
 
