@@ -1,4 +1,4 @@
-# 
+
 import scipy
 import matplotlib.pylab as plt
 from plotting import *
@@ -45,7 +45,8 @@ nDOF=nComp*nSpec
 nm_to_um = 1.e-3
 
 print "WARNING: fixunits" 
-Ds=0.01     # very slow [um^2/ms]
+#Ds=0.01     # very slow [um^2/ms]
+Ds=0.1     # very slow [um^2/ms]
 Dw=1.       # water [um^2/ms]
 Df = 1000.
 
@@ -769,7 +770,7 @@ def test6(arg="diffs"):
     #vars = 10**np.linspace(1.8,2.2,nvars) 
     nvars = 10 
     vars = 10**np.linspace(1,2.5,nvars) 
-    steps = 1000 
+    steps = 2000 
     params.dt = 0.5
 
     # debug 
@@ -850,12 +851,16 @@ def test6(arg="diffs"):
 
   plt.gcf().savefig(arg+".png",dpi=300)   
 
-def test7():
+def test7(buff=False):
   #print phis
   #print dists
   nPhis = 11
   #nBuffs = 3
   nDists = 10 
+
+
+    
+   
     
   #KD = 1. # 1 [uM]     
   #phis = np.linspace(0.5,1.0,nPhis)
@@ -865,14 +870,37 @@ def test7():
   #print KDs
 
 
+
   params = oscparams(Dbarrier=-1)
-  steps =100
-  dt = 5  
+  steps =200
+  dt = 2.5  
+
+  # dbg
+  dbg=False
+  prefix=""
+  if dbg:
+    prefix="Dbg"
+    nPhis = 1 
+    nDists = 1
+    dists = np.array([100])
+    Deffs = np.array([0.1]) 
+    steps = 100
+
+
+  if buff:
+    B = 1.
+    KD = 1.
+    Deffs = Deffs / (1 + B/KD)
 
   params.steps=steps
   params.dt = dt
   vol = 100.*100*100.
-  pickleName="allf.pkl"  
+
+  if buff:
+    pickleName=prefix+"allbuff.pkl"  
+  else: 
+    pickleName=prefix+"all.pkl"  
+
   stddevs = np.zeros([nDists,nPhis])
 
   for i,dist in enumerate(dists):
@@ -895,9 +923,14 @@ def test7():
       #plt.title(msg)
       #plt.plot(ts,concs[:,idxA2])
       #plt.plot(ts,concs[:,idxA3])
-      stddevs[i,j] = np.std(concs[:,idxA3])/np.std(concs[:,idxA2])
+      discard = int(steps/5)
+      concA3 = concs[discard:-2,idxA3]
+      concA2 = concs[discard:-2,idxA2]
+      stddevs[i,j] = np.std(concA3)/np.std(concA2)
       print "s%f \n"%(stddevs[i,j])
       #break 
+      # hijacking Ts to store last concentrations
+      ts = [concA2,concA3]
     
  
     
@@ -1068,6 +1101,9 @@ if __name__ == "__main__":
       quit()
     if(arg=="-test7"): 
       test7()#sys.argv[i+1])
+      quit()
+    if(arg=="-test7buff"): 
+      test7(buff=True)#sys.argv[i+1])
       quit()
     if(arg=="-test8"): 
       test8()#sys.argv[i+1])
