@@ -7,7 +7,6 @@ import scipy.integrate
 import testrxn
 class empty:pass
 
-print "WARNING: should test time-dependent soln of code against analytical results" 
 # TODO 
 # DONE might need to make this compatible wit a cube 
 # use Johan'vA2 meshes???

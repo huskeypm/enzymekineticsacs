@@ -763,6 +763,8 @@ if __name__ == "__main__":
   remap = "none"
   verbose = True
 
+  raise RuntimeError("Replaced by 3comp.py") 
+
   if len(sys.argv) < 2:
       raise RuntimeError(msg)
 
