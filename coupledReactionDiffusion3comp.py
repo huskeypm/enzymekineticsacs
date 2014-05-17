@@ -20,8 +20,6 @@ class empty:pass
 # Concentrations [uM]
 # Time [ms] 
 # Diff constants [um^2/ms]  
-paraview=False 
-verbose=False 
 
 ## WARNING: if changed, must also be reflected in plotting.py
 idxA1 = 0 # PDE 
@@ -43,11 +41,6 @@ nDOF=nComp*nSpec
 ## Units
 nm_to_um = 1.e-3
 
-print "WARNING: fixunits" 
-#Ds=0.01     # very slow [um^2/ms]
-Ds=0.1     # very slow [um^2/ms]
-Dw=1.       # water [um^2/ms]
-Df = 1000.
 
 
 from dolfin import *
@@ -90,45 +83,42 @@ debug = False
 
 
 ## Params 
-# compartments 
-dist = 1.  # [um] PKH what is this - dist between 1/2 and 1/3 
+# dist between ODE/PDE compartments 
 dist = 1.*nm_to_um  # [um] PKH what is this - dist between 1/2 and 1/3 
-dist = Constant(dist)  # [nm?] PKH what is this - dist between 1/2 and 1/3 
-
-# kinetics 
-kp = 1.0     
-km = 0.6 
-bT = 70.0   # [uM]  
-Kd = km/kp; # [uM] 
-
-
-
+dist = Constant(dist)  # 
 
 class Params():
+  paraview = False 
+  verbose=False 
+
   # time steps 
   steps = 500
   dt = 1.0   # [ms] 
   steps = 250
   dt = 2.0
+
+  Ds=0.100   # very slow [um^2/ms]
+  Dbulk=1.       # water [um^2/ms]
+  Df = 1e3   
   
 
   # diffusion params 
-  DA1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
-  DB1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
-  DC1   = 1.  # [um^2/ms] Diff const within PDE (domain 1) 
-  D12  = 1000.  # [um^2/ms] Diff const between domain 1 and 2
-  D13  = 1000.  # [um^2/ms] Diff const between domain 1 and 3
+  DA1   = Dbulk# [um^2/ms] Diff const within PDE (domain 1) 
+  DB1   = Dbulk    # [um^2/ms] Diff const within PDE (domain 1) 
+  DC1   = Dbulk    # [um^2/ms] Diff const within PDE (domain 1) 
+  D12  = Df    # [um^2/ms] Diff const between domain 1 and 2
+  D13  = Df    # [um^2/ms] Diff const between domain 1 and 3
 
   # init concs 
-  cA1init = 0.5 # [uM]
-  cB1init = 0.5 # [uM]
-  cC1init = 0.5 # [uM]
+  cA1init =1.0  # [uM]
+  cB1init =1.0  # [uM]
+  cC1init =1.0  # [uM]
   cA2init =1.0
   cB2init =1.0
   cC2init =1.0
-  cA3init =0.1
-  cB3init =0.1
-  cC3init =0.1
+  cA3init =1.0 
+  cB3init =1.0 
+  cC3init =1.0 
 
   # buffer (PDE domain for now) 
   cBuff1= 0. # concentration [uM]
@@ -195,7 +185,7 @@ class MyEqn(NonlinearProblem):
         assemble(self.a, tensor=A, reset_sparsity=self.reset_sparsity)
         self.reset_sparsity = False
 
-def Report(u_n,mesh,t,concs=-1,j=-1):
+def Report(u_n,mesh,t,concs=-1,j=-1,params=False):   
 
     # 
     #xTest = [5.0,0.5,0.5]
@@ -205,15 +195,24 @@ def Report(u_n,mesh,t,concs=-1,j=-1):
       tot = assemble(ele*dx,mesh=mesh)
       vol = assemble(Constant(1.)*dx,mesh=mesh)
       conc = tot/vol
-      if verbose: 
+      if params and params.verbose: 
         print "t=%f Conc(%d) %f " % (t,i,conc)
       if(j>-1): 
         concs[j,i] = conc
 
-def PrintSlice(results): 
+def PrintLine(results):
+    img = PrintSlice(results,doplot=False,idx=idxA1)
+    s = np.shape(img)
+
+    line = img[:,int(s[1]/2.)]
+    #print np.mean(line) 
+    #print line[0],line[-1]
+    return line 
+
+def PrintSlice(results,doplot=True,idx=idxA1): 
     mesh = results.mesh
     dims = np.max(mesh.coordinates(),axis=0) - np.min(mesh.coordinates(),axis=0)
-    u = results.u_n.split()[0]
+    u = results.u_n.split()[idx]
     up = project(u,FunctionSpace(mesh,"CG",1))
     res = 100
     (gx,gy,gz) = np.mgrid[0:dims[0]:(res*1j),
@@ -223,12 +222,16 @@ def PrintSlice(results):
     img0 = griddata(mesh.coordinates(),up.vector(),(gx,gy,gz))
     
     imgx=np.reshape(img0,[res,res])
-    print np.shape(imgx)
-    plt.pcolormesh(np.reshape(gx,[res,res]).T,np.reshape(gz,[res,res]).T,imgx.T,
-           cmap=plt.cm.RdBu_r)
-    plt.xlabel("x [um]")
-    plt.ylabel("z [um]")
-    plt.colorbar()
+
+    if doplot:
+      print np.shape(imgx)
+      plt.pcolormesh(np.reshape(gx,[res,res]).T,np.reshape(gz,[res,res]).T,imgx.T,
+             cmap=plt.cm.RdBu_r)
+      plt.xlabel("x [um]")
+      plt.ylabel("z [um]")
+      plt.colorbar()
+
+    return imgx
 
       
 
@@ -238,7 +241,7 @@ def Problem(params = Params()):
   DA1eff = params.DA1 
   DB1eff = params.DB1 
   DC1eff = params.DC1 / (1 + params.cBuff1/params.KDBuff1)
-  print "D: %f Dwbuff: %f [um^2/ms]" % (params.DC1,DC1eff)
+  print "D: %f Dbulkbuff: %f [um^2/ms]" % (params.DC1,DC1eff)
   print "dim [um]", params.meshDim
 
   steps = params.steps 
@@ -444,13 +447,14 @@ def Problem(params = Params()):
   file = File("output.pvd", "compressed")
 
 
-  Report(u_n,mesh,0)                
+  Report(u_n,mesh,0,params=params)                
 
   
   # Step in time
   ti   = 0.0
   t = ti
   T = steps*float(dt)
+  lines=[]
   tots=np.zeros([steps+2,nDOF])
   concs=np.zeros([steps+2,nDOF])
   ts=np.zeros(steps+2)
@@ -468,6 +472,8 @@ def Problem(params = Params()):
   #quit()
   
   
+  results = empty()
+  results.mesh = mesh 
   while (t  < T):
       j+=1
       t   += float(dt)
@@ -551,7 +557,7 @@ def Problem(params = Params()):
   
       ## store 
       # check values
-      Report(u_n,mesh,t,concs=concs,j=j)
+      Report(u_n,mesh,t,concs=concs,j=j,params=params)
 
       #for i,ele in enumerate(split(u_n)):
       #  tot = assemble(ele*dx,mesh=mesh)
@@ -571,8 +577,10 @@ def Problem(params = Params()):
       tots[j,idxC3] = assemble(cC3_n/volume_frac13*dx)
       ts[j] = t    
 
-      if paraview:     
+      if params.paraview:     
         file << (u_n.split()[0], t)    
+        results.u_n = u_n
+        lines.append(PrintLine(results))
 
       ## update 
       #file << (u,vB2)
@@ -580,19 +588,30 @@ def Problem(params = Params()):
       u0.vector()[:] = u_n.vector()
   
 
-  results = empty()
   results.ts = ts 
   results.concs = concs 
   results.tots = tots 
-  results.mesh = mesh 
   results.u_n = u_n
+  results.lines = lines 
+  import copy
+  results.params = copy.copy(params)
 
   return results
 
 def test12():
   ## test block of left channel 
   params = Params()
+  params.steps=25
   params.D12=1000; params.D13=0. 
+  params.cA1init=0.5
+  params.cB1init=0.5
+  params.cC1init=0.5
+  params.cA2init=1.
+  params.cB2init=1.
+  params.cC2init=1.
+  params.cA3init=0.1
+  params.cB3init=0.1
+  params.cC3init=0.1
   result        = Problem(params=params)
 
   ## assert 
@@ -611,6 +630,15 @@ def test13():
   ## test block of right channel 
   params = Params()
   params.D12=0; params.D13=1000
+  params.cA1init=0.5
+  params.cB1init=0.5
+  params.cC1init=0.5
+  params.cA2init=1.
+  params.cB2init=1.
+  params.cC2init=1.
+  params.cA3init=0.1
+  params.cB3init=0.1
+  params.cC3init=0.1
   result = Problem(params=params)
 
   ## assert 
@@ -678,28 +706,27 @@ def test4():
 
 def test5(arg=0):
   if(arg=="all" or arg==1): 
-    test5i(Dbarrier=Ds,pickleName ="Dslow.pkl",name="slow")
+    test5i(Dbarrier=params.Ds,pickleName ="Dslow.pkl",name="slow")
   if(arg=="all" or arg==2): 
-    test5i(Dbarrier=Dw,pickleName ="Dwater.pkl",name="water")
+    test5i(Dbarrier=params.Dbulk,pickleName ="Dwater.pkl",name="water")
   if(arg=="all" or arg==3): 
-    test5i(Dbarrier=Df,pickleName ="Dfast.pkl",name="fast")
+    test5i(Dbarrier=params.Df,pickleName ="Dfast.pkl",name="fast")
 
 
 
 # crappy way of doing this (should use inheritance)  
 # oscillatory parameters 
-def oscparams(Dbarrier=1.):
+def oscparams(Dbarrier=1e3):
   amp = 0.05
   amp =  75  # gets to 3x original conc
   freq = 0.1
-  Df = 1000.
 
   params = Params()
   params.cA2init=1.0
   params.cA1init=1.0
   params.cA3init=1.0  
-  params.D12 = Df            
-  params.D13 = Df            
+  params.D12 = params.Df            
+  params.D13 = params.Df            
   params.DA1 = Dbarrier 
   params.DB1 = Dbarrier 
   params.DC1 = Dbarrier 
@@ -711,15 +738,15 @@ def oscparams(Dbarrier=1.):
   return params 
 
 
-def test5i(Dbarrier=1.,pickleName="test.pkl",name=""):
+def test5i(Dbarrier=1e3,pickleName="test.pkl",name=""):
 
   steps = 500
   dt = 1.
   steps = 250
   dt = 2.
   # test
-  #steps=10  
-  #dt = 4
+  #steps=30  
+  #dt = 5
   
 
   # w diff barrier 
@@ -730,7 +757,10 @@ def test5i(Dbarrier=1.,pickleName="test.pkl",name=""):
   results =  Problem(params=params)
   tsp = results.ts
   concsp = results.concs  
-  writepickle(pickleName,tsp,concsp)
+
+  tsp = tsp[1:-1]
+  concsp= concsp[1:-1]
+  writepickle(pickleName,tsp,concsp,Dbarrier)
       
 
   ts, concs,vars= readpickle(pickleName)

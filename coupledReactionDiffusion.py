@@ -1,5 +1,6 @@
 # 
 import matplotlib.pylab as plt
+raise RuntimeError("ANTIQUIATED")
 class empty:pass
 
 print "WARNING: should test time-dependent soln of code against analytical results" 
