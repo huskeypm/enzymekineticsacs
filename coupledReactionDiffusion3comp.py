@@ -9,8 +9,8 @@ class empty:pass
 
 # TODO 
 # DONE might need to make this compatible wit a cube 
-# use Johan'vA2 meshes???
-# add in Johan'vA2 fluxes???
+# use Johan'vAl meshes???
+# add in Johan'vAl fluxes???
 # add back reactions [DONE]  
 # add right hand compart [DONE]
 
@@ -22,15 +22,15 @@ class empty:pass
 # Diff constants [um^2/ms]  
 
 ## WARNING: if changed, must also be reflected in plotting.py
-idxA1 = 0 # PDE 
-idxB1 = 1
-idxC1 = 2
-idxA2 = 3 # L compartment 
-idxB2 = 4
-idxC2 = 5
-idxA3 = 6 # R compartment 
-idxB3 = 7
-idxC3 = 8
+idxAb = 0 # PDE 
+idxBb = 1
+idxCb = 2
+idxAl = 3 # L compartment 
+idxBl = 4
+idxCl = 5
+idxAr = 6 # R compartment 
+idxBr = 7
+idxCr = 8
 nComp = 3
 nSpec = 3
 nDOF=nComp*nSpec
@@ -103,29 +103,29 @@ class Params():
   
 
   # diffusion params 
-  DA1   = Dbulk# [um^2/ms] Diff const within PDE (domain 1) 
-  DB1   = Dbulk    # [um^2/ms] Diff const within PDE (domain 1) 
-  DC1   = Dbulk    # [um^2/ms] Diff const within PDE (domain 1) 
+  DAb   = Dbulk# [um^2/ms] Diff const within PDE (domain 1) 
+  DBb   = Dbulk    # [um^2/ms] Diff const within PDE (domain 1) 
+  DCb   = Dbulk    # [um^2/ms] Diff const within PDE (domain 1) 
   D12  = Df    # [um^2/ms] Diff const between domain 1 and 2
   D13  = Df    # [um^2/ms] Diff const between domain 1 and 3
 
   # init concs 
-  cA1init =1.0  # [uM]
-  cB1init =1.0  # [uM]
-  cC1init =1.0  # [uM]
-  cA2init =1.0
-  cB2init =1.0
-  cC2init =1.0
-  cA3init =1.0 
-  cB3init =1.0 
-  cC3init =1.0 
+  cAbinit =1.0  # [uM]
+  cBbinit =1.0  # [uM]
+  cCbinit =1.0  # [uM]
+  cAlinit =1.0
+  cBlinit =1.0
+  cClinit =1.0
+  cArinit =1.0 
+  cBrinit =1.0 
+  cCrinit =1.0 
 
   # buffer (PDE domain for now) 
   cBuff1= 0. # concentration [uM]
   KDBuff1 = 1. # KD [uM]  
 
   # source
-  periodicSource=False # periodic source on CA2
+  periodicSource=False # periodic source on CAl
   amp = 0.05 # [uM] 
   freq = 0.1 # [kHz]? 
 
@@ -160,15 +160,15 @@ class InitialConditions(Expression):
     # corner 
     #oif (np.linalg.norm(x -np.zeros(3) ) < 0.5):
     if 1:
-      values[0] = self.params.cA1init
-      values[1] = self.params.cB1init
-      values[2] = self.params.cC1init
-      values[3] = self.params.cA2init
-      values[4] = self.params.cB2init
-      values[5] = self.params.cC2init
-      values[6] = self.params.cA3init
-      values[7] = self.params.cB3init
-      values[8] = self.params.cC3init
+      values[0] = self.params.cAbinit
+      values[1] = self.params.cBbinit
+      values[2] = self.params.cCbinit
+      values[3] = self.params.cAlinit
+      values[4] = self.params.cBlinit
+      values[5] = self.params.cClinit
+      values[6] = self.params.cArinit
+      values[7] = self.params.cBrinit
+      values[8] = self.params.cCrinit
   def value_shape(self):
     return (nDOF,)
 
@@ -190,7 +190,7 @@ def Report(u_n,mesh,t,concs=-1,j=-1,params=False):
     # 
     #xTest = [5.0,0.5,0.5]
     #u = u_n.split()[0]
-    #print "A1 at xTest: ", u(xTest)              
+    #print "Ab at xTest: ", u(xTest)              
     for i,ele in enumerate(split(u_n)):
       tot = assemble(ele*dx,mesh=mesh)
       vol = assemble(Constant(1.)*dx,mesh=mesh)
@@ -201,7 +201,7 @@ def Report(u_n,mesh,t,concs=-1,j=-1,params=False):
         concs[j,i] = conc
 
 def PrintLine(results):
-    img = PrintSlice(results,doplot=False,idx=idxA1)
+    img = PrintSlice(results,doplot=False,idx=idxAb)
     s = np.shape(img)
 
     line = img[:,int(s[1]/2.)]
@@ -209,7 +209,7 @@ def PrintLine(results):
     #print line[0],line[-1]
     return line 
 
-def PrintSlice(results,doplot=True,idx=idxA1): 
+def PrintSlice(results,doplot=True,idx=idxAb): 
     mesh = results.mesh
     dims = np.max(mesh.coordinates(),axis=0) - np.min(mesh.coordinates(),axis=0)
     u = results.u_n.split()[idx]
@@ -238,10 +238,10 @@ def PrintSlice(results,doplot=True,idx=idxA1):
 def Problem(params = Params()):
 
   # get effective diffusion constant (for C only) based on buffer 
-  DA1eff = params.DA1 
-  DB1eff = params.DB1 
-  DC1eff = params.DC1 / (1 + params.cBuff1/params.KDBuff1)
-  print "D: %f Dbulkbuff: %f [um^2/ms]" % (params.DC1,DC1eff)
+  DAbeff = params.DAb 
+  DBbeff = params.DBb 
+  DCbeff = params.DCb / (1 + params.cBuff1/params.KDBuff1)
+  print "D: %f Dbulkbuff: %f [um^2/ms]" % (params.DCb,DCbeff)
   print "dim [um]", params.meshDim
 
   steps = params.steps 
@@ -249,9 +249,9 @@ def Problem(params = Params()):
   # rescale diffusion consants 
 
   dt = Constant(params.dt)
-  DA1 = Constant(DA1eff)   # diff within domain 1 
-  DB1 = Constant(DB1eff)   # diff within domain 1 
-  DC1 = Constant(DC1eff)   # diff within domain 1 
+  DAb = Constant(DAbeff)   # diff within domain 1 
+  DBb = Constant(DBbeff)   # diff within domain 1 
+  DCb = Constant(DCbeff)   # diff within domain 1 
   D12 = Constant(params.D12) # diffusionb etween domain 1 and 2 
   D13 = Constant(params.D13)
 
@@ -284,21 +284,21 @@ def Problem(params = Params()):
   
   # Trial and Test functions 
   du = TrialFunction(ME) 
-  vA1,vB1,vC1,\
-  vA2,vB2,vC2,\
-  vA3,vB3,vC3  = TestFunctions(ME)
+  vAb,vBb,vCb,\
+  vAl,vBl,vCl,\
+  vAr,vBr,vCr  = TestFunctions(ME)
   
   # Define function
   u_n = Function(ME) # current soln
   u0 = Function(ME) # prev soln
   
   # split mixed functions
-  cA1_n,cB1_n,cC1_n,\
-  cA2_n,cB2_n,cC2_n,\
-  cA3_n,cB3_n,cC3_n = split(u_n)
-  cA1_0,cB1_0,cC1_0,\
-  cA2_0,cB2_0,cC2_0,\
-  cA3_0,cB3_0,cC3_0 = split(u0)
+  cAb_n,cBb_n,cCb_n,\
+  cAl_n,cBl_n,cCl_n,\
+  cAr_n,cBr_n,cCr_n = split(u_n)
+  cAb_0,cBb_0,cCb_0,\
+  cAl_0,cBl_0,cCl_0,\
+  cAr_0,cBr_0,cCr_0 = split(u0)
   
   # Init conts
   #init_cond = InitialConditions()
@@ -313,26 +313,26 @@ def Problem(params = Params()):
   
   # Diffusion
   #if(field==False):
-  #  RHSA1 = -Dij*inner(grad(c),grad(vA1))*dx  
-  #  RHSB1 = -Dij*inner(grad(cb),grad(vB1))*dx 
+  #  RHSAb = -Dij*inner(grad(c),grad(vAb))*dx  
+  #  RHSBb = -Dij*inner(grad(cb),grad(vBb))*dx 
   #else:
-  RHSA1 = -inner(DA1*grad(cA1_n),grad(vA1))*dx  
-  RHSB1 = -inner(DB1*grad(cB1_n),grad(vB1))*dx 
-  RHSC1 = -inner(DC1*grad(cC1_n),grad(vC1))*dx 
-  RHSA2 = Constant(0)*vA2*dx # for consistency
-  RHSB2 = Constant(0)*vB2*dx
-  RHSC2 = Constant(0)*vC2*dx
-  RHSA3 = Constant(0)*vA3*dx # for consistency
-  RHSB3 = Constant(0)*vB3*dx
-  RHSC3 = Constant(0)*vC3*dx
+  RHSAb = -inner(DAb*grad(cAb_n),grad(vAb))*dx  
+  RHSBb = -inner(DBb*grad(cBb_n),grad(vBb))*dx 
+  RHSCb = -inner(DCb*grad(cCb_n),grad(vCb))*dx 
+  RHSAl = Constant(0)*vAl*dx # for consistency
+  RHSBl = Constant(0)*vBl*dx
+  RHSCl = Constant(0)*vCl*dx
+  RHSAr = Constant(0)*vAr*dx # for consistency
+  RHSBr = Constant(0)*vBr*dx
+  RHSCr = Constant(0)*vCr*dx
   
   
   # operator splitting 
-  #opSplit=True # just turning off reaction vA2
+  #opSplit=True # just turning off reaction vAl
   if(params.goodwinReaction=="explicit"):
     # no rxn in PDE part   
-    #RHSA1 
-    #RHSB1 
+    #RHSAb 
+    #RHSBb 
 
     raise RuntimeError("Broken, since using new var names. See goodwin.py")
     # dA/dt =v0 / (1+ (C/K)^p) - k1*A
@@ -342,43 +342,43 @@ def Problem(params = Params()):
     p = params
     #  ->A
     ikm = 1/p.Km
-    #RHSA2 +=  (1/volume_frac12)*(p.v0/(1+(ikm*cC2_n)**p.p))*vA2*dx
-    m = ikm*cC2_n
+    #RHSAl +=  (1/volume_frac12)*(p.v0/(1+(ikm*cCl_n)**p.p))*vAl*dx
+    m = ikm*cCl_n
     m = m**p.p
     #m = m*m*m * m*m*m * m*m*m * m*m*m 
-    RHSA2 +=  (1/volume_frac12)*(p.v0/(1+m))*vA2*dx
+    RHSAl +=  (1/volume_frac12)*(p.v0/(1+m))*vAl*dx
  
     # A->B 
     # dA/dt = -k0*A
     # dB/dt = +v1*B
-    RHSA2 += -(1/volume_frac12)*p.k0*cA2_n*vA2*dx
-    RHSB2 +=  (1/volume_frac12)*p.v1*cA2_n*vB2*dx
+    RHSAl += -(1/volume_frac12)*p.k0*cAl_n*vAl*dx
+    RHSBl +=  (1/volume_frac12)*p.v1*cAl_n*vBl*dx
 
     # B->C 
     # dB/dt = -k1*B
     # dC/dt = +v2*C
-    RHSB2 += -(1/volume_frac12)*p.k1*cB2_n*vB2*dx
-    RHSC2 +=  (1/volume_frac12)*p.v2*cB2_n*vC2*dx
+    RHSBl += -(1/volume_frac12)*p.k1*cBl_n*vBl*dx
+    RHSCl +=  (1/volume_frac12)*p.v2*cBl_n*vCl*dx
 
     # C-> 0 
-    RHSC2 += -(1/volume_frac12)*p.k2*cC2_n*vC2*dx
+    RHSCl += -(1/volume_frac12)*p.k2*cCl_n*vCl*dx
 
 
   ## get indices/values (needed for operator splitting) 
-  indcA1, indcB1, indcC1 = set(), set(), set()
-  indcA2, indcB2, indcC2 = set(), set(), set()
-  indcA3, indcB3, indcC3 = set(), set(), set()
-  dm_cA1, dm_cB1, dm_cC1 = ME.sub(idxA1).dofmap(), ME.sub(idxB1).dofmap(),ME.sub(idxC1).dofmap()
-  dm_cA2, dm_cB2, dm_cC2 = ME.sub(idxA2).dofmap(), ME.sub(idxB2).dofmap(),ME.sub(idxC2).dofmap()
-  dm_cA3, dm_cB3, dm_cC3 = ME.sub(idxA3).dofmap(), ME.sub(idxB3).dofmap(),ME.sub(idxC3).dofmap()
+  indcAb, indcBb, indcCb = set(), set(), set()
+  indcAl, indcBl, indcCl = set(), set(), set()
+  indcAr, indcBr, indcCr = set(), set(), set()
+  dm_cAb, dm_cBb, dm_cCb = ME.sub(idxAb).dofmap(), ME.sub(idxBb).dofmap(),ME.sub(idxCb).dofmap()
+  dm_cAl, dm_cBl, dm_cCl = ME.sub(idxAl).dofmap(), ME.sub(idxBl).dofmap(),ME.sub(idxCl).dofmap()
+  dm_cAr, dm_cBr, dm_cCr = ME.sub(idxAr).dofmap(), ME.sub(idxBr).dofmap(),ME.sub(idxCr).dofmap()
   for cell in cells(mesh):
-      indcA1.update(dm_cA1.cell_dofs(cell.index())); indcB1.update(dm_cB1.cell_dofs(cell.index())); indcC1.update(dm_cC1.cell_dofs(cell.index()))
-      indcA2.update(dm_cA2.cell_dofs(cell.index())); indcB2.update(dm_cB2.cell_dofs(cell.index())); indcC2.update(dm_cC2.cell_dofs(cell.index()))
-      indcA3.update(dm_cA3.cell_dofs(cell.index())); indcB3.update(dm_cB3.cell_dofs(cell.index())); indcC3.update(dm_cC3.cell_dofs(cell.index()))
+      indcAb.update(dm_cAb.cell_dofs(cell.index())); indcBb.update(dm_cBb.cell_dofs(cell.index())); indcCb.update(dm_cCb.cell_dofs(cell.index()))
+      indcAl.update(dm_cAl.cell_dofs(cell.index())); indcBl.update(dm_cBl.cell_dofs(cell.index())); indcCl.update(dm_cCl.cell_dofs(cell.index()))
+      indcAr.update(dm_cAr.cell_dofs(cell.index())); indcBr.update(dm_cBr.cell_dofs(cell.index())); indcCr.update(dm_cCr.cell_dofs(cell.index()))
 
-  indcA1= np.fromiter(indcA1, dtype=np.uintc); indcB1= np.fromiter(indcB1, dtype=np.uintc); indcC1= np.fromiter(indcC1, dtype=np.uintc)
-  indcA2= np.fromiter(indcA2, dtype=np.uintc); indcB2= np.fromiter(indcB2, dtype=np.uintc); indcC2= np.fromiter(indcC2, dtype=np.uintc)
-  indcA3= np.fromiter(indcA3, dtype=np.uintc); indcB3= np.fromiter(indcB3, dtype=np.uintc); indcC3= np.fromiter(indcC3, dtype=np.uintc)
+  indcAb= np.fromiter(indcAb, dtype=np.uintc); indcBb= np.fromiter(indcBb, dtype=np.uintc); indcCb= np.fromiter(indcCb, dtype=np.uintc)
+  indcAl= np.fromiter(indcAl, dtype=np.uintc); indcBl= np.fromiter(indcBl, dtype=np.uintc); indcCl= np.fromiter(indcCl, dtype=np.uintc)
+  indcAr= np.fromiter(indcAr, dtype=np.uintc); indcBr= np.fromiter(indcBr, dtype=np.uintc); indcCr= np.fromiter(indcCr, dtype=np.uintc)
 
 
     
@@ -387,50 +387,50 @@ def Problem(params = Params()):
   expr = Expression("a*sin(b*t)",a=params.amp,b=params.freq,t=0)
   if params.periodicSource:
     print "Adding periodic source" 
-    #RHSA2 += expr*cA2_n*vA2*dx
-    RHSA2 += expr*vA2*dx
+    #RHSAl += expr*cAl_n*vAl*dx
+    RHSAl += expr*vAl*dx
   
   
   # Time derivative and diffusion of field species
-  # (dc/dt) = RHS  --> c1-cA1_0 - dt * RHS = 0
-  # WRONG LA1 = (c-cA1_0)c*vA1*dx - cA1_0*vA1*dx - dt * RHSA1
-  #LB1 = cb*vB1*dx - cB1_0*vB1*dx - dt * RHSB1
-  #LA2 = cs*vA2*dx - cA2_0*vA2*dx - dt * RHSA2
-  #LB2 = ct*vB2*dx - cB2_0*vB2*dx - dt * RHSB2
-  LA1 = (cA1_n-cA1_0)*vA1/dt*dx - RHSA1 
-  LB1 = (cB1_n-cB1_0)*vB1/dt*dx - RHSB1 
-  LC1 = (cC1_n-cC1_0)*vC1/dt*dx - RHSC1 
+  # (dc/dt) = RHS  --> c1-cAb_0 - dt * RHS = 0
+  # WRONG LAb = (c-cAb_0)c*vAb*dx - cAb_0*vAb*dx - dt * RHSAb
+  #LBb = cb*vBb*dx - cBb_0*vBb*dx - dt * RHSBb
+  #LAl = cs*vAl*dx - cAl_0*vAl*dx - dt * RHSAl
+  #LBl = ct*vBl*dx - cBl_0*vBl*dx - dt * RHSBl
+  LAb = (cAb_n-cAb_0)*vAb/dt*dx - RHSAb 
+  LBb = (cBb_n-cBb_0)*vBb/dt*dx - RHSBb 
+  LCb = (cCb_n-cCb_0)*vCb/dt*dx - RHSCb 
   
   # Flux to mesh domain
-  LA1 -= D12*(cA2_n-cA1_n)*vA1/dist*ds(marker12)
-  LB1 -= D12*(cB2_n-cB1_n)*vB1/dist*ds(marker12)
-  LC1 -= D12*(cC2_n-cC1_n)*vC1/dist*ds(marker12)
-  LA1 -= D13*(cA3_n-cA1_n)*vA1/dist*ds(marker13)
-  LB1 -= D13*(cB3_n-cB1_n)*vB1/dist*ds(marker13)
-  LC1 -= D13*(cC3_n-cC1_n)*vC1/dist*ds(marker13)
+  LAb -= D12*(cAl_n-cAb_n)*vAb/dist*ds(marker12)
+  LBb -= D12*(cBl_n-cBb_n)*vBb/dist*ds(marker12)
+  LCb -= D12*(cCl_n-cCb_n)*vCb/dist*ds(marker12)
+  LAb -= D13*(cAr_n-cAb_n)*vAb/dist*ds(marker13)
+  LBb -= D13*(cBr_n-cBb_n)*vBb/dist*ds(marker13)
+  LCb -= D13*(cCr_n-cCb_n)*vCb/dist*ds(marker13)
   
   
   # Time derivative of scalar species and flux from scalar domain 
   # domain 2
-  LA2 = (cA2_n-cA2_0)*vA2/(dt*volume_frac12)*dx - RHSA2
-  LB2 = (cB2_n-cB2_0)*vB2/(dt*volume_frac12)*dx - RHSB2
-  LC2 = (cC2_n-cC2_0)*vC2/(dt*volume_frac12)*dx - RHSC2
-  LA2 += D12*(cA2_n-cA1_n)*vA2/dist*ds(marker12)
-  LB2 += D12*(cB2_n-cB1_n)*vB2/dist*ds(marker12)
-  LC2 += D12*(cC2_n-cC1_n)*vC2/dist*ds(marker12)
+  LAl = (cAl_n-cAl_0)*vAl/(dt*volume_frac12)*dx - RHSAl
+  LBl = (cBl_n-cBl_0)*vBl/(dt*volume_frac12)*dx - RHSBl
+  LCl = (cCl_n-cCl_0)*vCl/(dt*volume_frac12)*dx - RHSCl
+  LAl += D12*(cAl_n-cAb_n)*vAl/dist*ds(marker12)
+  LBl += D12*(cBl_n-cBb_n)*vBl/dist*ds(marker12)
+  LCl += D12*(cCl_n-cCb_n)*vCl/dist*ds(marker12)
 
   # domain 3
-  LA3 = (cA3_n-cA3_0)*vA3/(dt*volume_frac13)*dx - RHSA3
-  LB3 = (cB3_n-cB3_0)*vB3/(dt*volume_frac13)*dx - RHSB3
-  LC3 = (cC3_n-cC3_0)*vC3/(dt*volume_frac13)*dx - RHSC3
-  LA3 += D13*(cA3_n-cA1_n)*vA3/dist*ds(marker13)
-  LB3 += D13*(cB3_n-cB1_n)*vB3/dist*ds(marker13)
-  LC3 += D13*(cC3_n-cC1_n)*vC3/dist*ds(marker13)
+  LAr = (cAr_n-cAr_0)*vAr/(dt*volume_frac13)*dx - RHSAr
+  LBr = (cBr_n-cBr_0)*vBr/(dt*volume_frac13)*dx - RHSBr
+  LCr = (cCr_n-cCr_0)*vCr/(dt*volume_frac13)*dx - RHSCr
+  LAr += D13*(cAr_n-cAb_n)*vAr/dist*ds(marker13)
+  LBr += D13*(cBr_n-cBb_n)*vBr/dist*ds(marker13)
+  LCr += D13*(cCr_n-cCb_n)*vCr/dist*ds(marker13)
 
   
   # compbine
-  L = LA1 + LB1 + LA2 + LB2 + LA3 + LB3
-  L+= LC1 + LC2 + LC3
+  L = LAb + LBb + LAl + LBl + LAr + LBr
+  L+= LCb + LCl + LCr
   
   # Compute directional derivative about u in the direction of du (Jacobian)
   # (for Newton iterations) 
@@ -464,7 +464,7 @@ def Problem(params = Params()):
 #  print "put elsewhere" 
 #  from goodwin import *
 #  tis = scipy.linspace(ti,T,steps)
-#  y0s = np.array([params.cA1init,params.cA1init,params.cA1init])
+#  y0s = np.array([params.cAbinit,params.cAbinit,params.cAbinit])
 #  p = params
 #  ks = np.array([1.0,1/p.Km,p.p,p.v0,p.k0,p.v1,p.k1,p.v2,p.k2])            
 #  yTs = goodwinmodel(tis,y0s,ks)
@@ -484,14 +484,14 @@ def Problem(params = Params()):
       if(params.goodwinReaction=="opsplit"): # after solve? 
         u_array = u_n.vector().array() 
         tis = scipy.linspace(t,t+float(dt),steps)
-        y0s = np.array([u_array[indcA2],u_array[indcB2], u_array[indcC2]])
+        y0s = np.array([u_array[indcAl],u_array[indcBl], u_array[indcCl]])
         y0s = np.ndarray.flatten(y0s)
         #print y0s
         #print yTs
         yTs = goodwinmodel(tis,y0s,ks)
         yTs = yTs[-1] 
-        u_array[indcA2]=yTs[0]; u_array[indcB2]=yTs[1];u_array[indcC2]=yTs[2];
-        #print "%f %f %f" %(u_array[indcA2], u_array[indcB2],u_array[indcC2])
+        u_array[indcAl]=yTs[0]; u_array[indcBl]=yTs[1];u_array[indcCl]=yTs[2];
+        #print "%f %f %f" %(u_array[indcAl], u_array[indcBl],u_array[indcCl])
         u_n.vector()[:] = u_array
 
       # operator splitting 
@@ -502,25 +502,25 @@ def Problem(params = Params()):
         tis = scipy.linspace(t,t+float(dt),steps)
 
         # left side 
-        y0s = np.array([u_array[indcA2],u_array[indcB2], u_array[indcC2]])
+        y0s = np.array([u_array[indcAl],u_array[indcBl], u_array[indcCl]])
         y0s = np.ndarray.flatten(y0s)
         #yTs = goodwinmodelComp1(tis,y0s,ks)
         ks = np.array([1.0,1/p.Km,p.p,p.v0,p.v1,p.v2,p.v3])
         yTs = goodwin.rxn(tis,y0s,ks)
         yTs = yTs[-1] 
-        u_array[indcA2]=yTs[0]; u_array[indcB2]=yTs[1];u_array[indcC2]=yTs[2];
+        u_array[indcAl]=yTs[0]; u_array[indcBl]=yTs[1];u_array[indcCl]=yTs[2];
 
         # right side 
-        y0s = np.array([u_array[indcA3],u_array[indcB3], u_array[indcC3]])
+        y0s = np.array([u_array[indcAr],u_array[indcBr], u_array[indcCr]])
         y0s = np.ndarray.flatten(y0s)
         ks = np.array([1.0,1/p.Km,p.p,p.k0,p.k1,p.k2,p.k3])
         yTs = goodwin.rxn(tis,y0s,ks)
         #yTs = goodwinmodelComp3(tis,y0s,ks)
         yTs = yTs[-1] 
-        u_array[indcA3]=yTs[0]; u_array[indcB3]=yTs[1];u_array[indcC3]=yTs[2];
+        u_array[indcAr]=yTs[0]; u_array[indcBr]=yTs[1];u_array[indcCr]=yTs[2];
 
 
-        #print "%f %f %f" %(u_array[indcA2], u_array[indcB2],u_array[indcC2])
+        #print "%f %f %f" %(u_array[indcAl], u_array[indcBl],u_array[indcCl])
         u_n.vector()[:] = u_array
 
       # operator splitting 
@@ -530,17 +530,17 @@ def Problem(params = Params()):
         tis = scipy.linspace(t,t+float(dt),steps)
 
         # left side 
-        y0s = np.array([u_array[indcA2],u_array[indcB2], u_array[indcC2]])
+        y0s = np.array([u_array[indcAl],u_array[indcBl], u_array[indcCl]])
         y0s = np.ndarray.flatten(y0s)
         #yTs = goodwinmodelComp1(tis,y0s,ks)
         ks = [p.v0,p.v1,p.v2]
         #yTs = testrxn.rxnComp2(tis,y0s,ks)
         yTs = testrxn.rxn(tis,y0s,ks)
         yTs = yTs[-1] 
-        u_array[indcA2]=yTs[0]; u_array[indcB2]=yTs[1];u_array[indcC2]=yTs[2];
+        u_array[indcAl]=yTs[0]; u_array[indcBl]=yTs[1];u_array[indcCl]=yTs[2];
 
         # right side 
-        y0s = np.array([u_array[indcA3],u_array[indcB3], u_array[indcC3]])
+        y0s = np.array([u_array[indcAr],u_array[indcBr], u_array[indcCr]])
         y0s = np.ndarray.flatten(y0s)
         #yTs = goodwinmodel(tis,y0s,ks)
         ks = [p.k0,p.k1,p.k2]
@@ -548,10 +548,10 @@ def Problem(params = Params()):
         yTs = testrxn.rxn(tis,y0s,ks)
         yTs = yTs[-1] 
         #print yTs
-        u_array[indcA3]=yTs[0]; u_array[indcB3]=yTs[1];u_array[indcC3]=yTs[2];
+        u_array[indcAr]=yTs[0]; u_array[indcBr]=yTs[1];u_array[indcCr]=yTs[2];
 
 
-        #print "%f %f %f" %(u_array[indcA2], u_array[indcB2],u_array[indcC2])
+        #print "%f %f %f" %(u_array[indcAl], u_array[indcBl],u_array[indcCl])
         u_n.vector()[:] = u_array
 
   
@@ -566,15 +566,15 @@ def Problem(params = Params()):
       #  concs[j,i] = conc
       #  print "t=%f Conc(%d) %f " % (t,i,conc)          
   
-      tots[j,idxA1] = assemble(cA1_n*dx) # PDE domain 
-      tots[j,idxB1] = assemble(cB1_n*dx)
-      tots[j,idxC1] = assemble(cC1_n*dx)
-      tots[j,idxA2] = assemble(cA2_n/volume_frac12*dx) # scalar domain
-      tots[j,idxB2] = assemble(cB2_n/volume_frac12*dx)
-      tots[j,idxC2] = assemble(cC2_n/volume_frac12*dx)
-      tots[j,idxA3] = assemble(cA3_n/volume_frac13*dx)
-      tots[j,idxB3] = assemble(cB3_n/volume_frac13*dx)
-      tots[j,idxC3] = assemble(cC3_n/volume_frac13*dx)
+      tots[j,idxAb] = assemble(cAb_n*dx) # PDE domain 
+      tots[j,idxBb] = assemble(cBb_n*dx)
+      tots[j,idxCb] = assemble(cCb_n*dx)
+      tots[j,idxAl] = assemble(cAl_n/volume_frac12*dx) # scalar domain
+      tots[j,idxBl] = assemble(cBl_n/volume_frac12*dx)
+      tots[j,idxCl] = assemble(cCl_n/volume_frac12*dx)
+      tots[j,idxAr] = assemble(cAr_n/volume_frac13*dx)
+      tots[j,idxBr] = assemble(cBr_n/volume_frac13*dx)
+      tots[j,idxCr] = assemble(cCr_n/volume_frac13*dx)
       ts[j] = t    
 
       if params.paraview:     
@@ -583,7 +583,7 @@ def Problem(params = Params()):
         lines.append(PrintLine(results))
 
       ## update 
-      #file << (u,vB2)
+      #file << (u,vBl)
       expr.t = t 
       u0.vector()[:] = u_n.vector()
   
@@ -603,15 +603,15 @@ def test12():
   params = Params()
   params.steps=25
   params.D12=1000; params.D13=0. 
-  params.cA1init=0.5
-  params.cB1init=0.5
-  params.cC1init=0.5
-  params.cA2init=1.
-  params.cB2init=1.
-  params.cC2init=1.
-  params.cA3init=0.1
-  params.cB3init=0.1
-  params.cC3init=0.1
+  params.cAbinit=0.5
+  params.cBbinit=0.5
+  params.cCbinit=0.5
+  params.cAlinit=1.
+  params.cBlinit=1.
+  params.cClinit=1.
+  params.cArinit=0.1
+  params.cBrinit=0.1
+  params.cCrinit=0.1
   result        = Problem(params=params)
 
   ## assert 
@@ -630,15 +630,15 @@ def test13():
   ## test block of right channel 
   params = Params()
   params.D12=0; params.D13=1000
-  params.cA1init=0.5
-  params.cB1init=0.5
-  params.cC1init=0.5
-  params.cA2init=1.
-  params.cB2init=1.
-  params.cC2init=1.
-  params.cA3init=0.1
-  params.cB3init=0.1
-  params.cC3init=0.1
+  params.cAbinit=0.5
+  params.cBbinit=0.5
+  params.cCbinit=0.5
+  params.cAlinit=1.
+  params.cBlinit=1.
+  params.cClinit=1.
+  params.cArinit=0.1
+  params.cBrinit=0.1
+  params.cCrinit=0.1
   result = Problem(params=params)
 
   ## assert 
@@ -658,23 +658,23 @@ def test4():
 
   ## checked that domains remain constant 
   if 0: 
-    params.cA1init=0.0000  
-    params.DA1=0.        
-    params.DB1=0.        
-    params.DC1=0.        
-    params.cA2init=100.
-    params.cA3init=0.0000
+    params.cAbinit=0.0000  
+    params.DAb=0.        
+    params.DBb=0.        
+    params.DCb=0.        
+    params.cAlinit=100.
+    params.cArinit=0.0000
     params.D12=0.; params.D13=0.
     result        = Problem(params=params)
 
   ## conc even in all domains 
   if 0: 
-    params.cA1init=0.0000  
-    params.DA1=1000.     
-    params.DB1=1000.     
-    params.DC1=1000.     
-    params.cA2init=100.
-    params.cA3init=0.0000
+    params.cAbinit=0.0000  
+    params.DAb=1000.     
+    params.DBb=1000.     
+    params.DCb=1000.     
+    params.cAlinit=100.
+    params.cArinit=0.0000
     params.D12=1000.; params.D13=1000.
     result        = Problem(params=params)
 
@@ -684,12 +684,12 @@ def test4():
     params.volume_scalar3  = 1000. # [um^3] 
     params.steps = 100
     params.dt = 1 # [ms] 
-    params.cA1init=0.0000  
-    params.DA1=0.145 # [um^2/ms] DATP 
-    params.DB1=0.145 # [um^2/ms] DATP 
-    params.DC1=0.145 # [um^2/ms] DATP 
-    params.cA2init=1.
-    params.cA3init=0.0000
+    params.cAbinit=0.0000  
+    params.DAb=0.145 # [um^2/ms] DATP 
+    params.DBb=0.145 # [um^2/ms] DATP 
+    params.DCb=0.145 # [um^2/ms] DATP 
+    params.cAlinit=1.
+    params.cArinit=0.0000
     params.D12=1000.; params.D13=1000.
     params.meshDim = np.array([10.,1.,1.])   # [um] 
     result        = Problem(params=params)
@@ -698,9 +698,9 @@ def test4():
   return 
   ts = result.ts
   concs = result.concs
-  plt.plot(ts,concs[:,idxA1],label="A1/PDE")    
-  plt.plot(ts,concs[:,idxA2],label="A2")        
-  plt.plot(ts,concs[:,idxA3],label="A3")        
+  plt.plot(ts,concs[:,idxAb],label="Ab/PDE")    
+  plt.plot(ts,concs[:,idxAl],label="Al")        
+  plt.plot(ts,concs[:,idxAr],label="Ar")        
   plt.legend(loc=0)
   plt.gcf().savefig("test4.png",dpi=300) 
 
@@ -722,14 +722,14 @@ def oscparams(Dbarrier=1e3):
   freq = 0.1
 
   params = Params()
-  params.cA2init=1.0
-  params.cA1init=1.0
-  params.cA3init=1.0  
+  params.cAlinit=1.0
+  params.cAbinit=1.0
+  params.cArinit=1.0  
   params.D12 = params.Df            
   params.D13 = params.Df            
-  params.DA1 = Dbarrier 
-  params.DB1 = Dbarrier 
-  params.DC1 = Dbarrier 
+  params.DAb = Dbarrier 
+  params.DBb = Dbarrier 
+  params.DCb = Dbarrier 
   params.amp=amp
   params.freq = freq
   params.periodicSource=True  
@@ -766,9 +766,9 @@ def test5i(Dbarrier=1e3,pickleName="test.pkl",name=""):
   ts, concs,vars= readpickle(pickleName)
   
   plt.title("Dbarrier %f [um^2/ms]" % Dbarrier)    
-  plt.plot(ts,concs[:,idxA1],label="A1/PDE")    
-  plt.plot(ts,concs[:,idxA2],label="A2")        
-  plt.plot(ts,concs[:,idxA3],label="A3")        
+  plt.plot(ts,concs[:,idxAb],label="Ab/PDE")    
+  plt.plot(ts,concs[:,idxAl],label="Al")        
+  plt.plot(ts,concs[:,idxAr],label="Ar")        
   plt.legend()
   plt.gcf().savefig("test5"+name+".png",dpi=300) 
 
@@ -815,15 +815,15 @@ def test6(arg="diffs"):
     vars = 10**np.linspace(1,3,nvars) 
     pickleName ="Dbuffs.pkl"
 
-  concArA1 = np.zeros([steps,nvars])  
-  concArA2 = np.zeros([steps,nvars])  
-  concArA3 = np.zeros([steps,nvars])  
+  concArAb = np.zeros([steps,nvars])  
+  concArAl = np.zeros([steps,nvars])  
+  concArAr = np.zeros([steps,nvars])  
 
   for j, var in enumerate(vars):
     if arg=="diffs":
-        params.DA1 = var  
-        params.DB1 = var  
-        params.DC1 = var  
+        params.DAb = var  
+        params.DBb = var  
+        params.DCb = var  
 
     if (arg=="dists" or arg=="distsLag"):
         vol = 100.*100*100.
@@ -836,44 +836,44 @@ def test6(arg="diffs"):
         print "mesh dim", params.meshDim
 
     if arg=="buffs":
-        params.DA1 = 1. # 
-        params.DB1 = 1. # 
-        params.DC1 = 1. # 
+        params.DAb = 1. # 
+        params.DBb = 1. # 
+        params.DCb = 1. # 
         params.cBuff1 = var  
 
     results = Problem(params=params)
     # check that totals are conserved 
-    start = np.sum(results.tots[0,[idxA1,idxA2,idxA3]])
-    final = np.sum(results.tots[-1,[idxA1,idxA2,idxA3]])
+    start = np.sum(results.tots[0,[idxAb,idxAl,idxAr]])
+    final = np.sum(results.tots[-1,[idxAb,idxAl,idxAr]])
     print "Tot conc at start %f and end %f" %(start,final) 
 
     concsij = results.concs  
     tsij = results.ts  
-    concArA1[:,j] = concsij[:,idxA1]
-    concArA2[:,j] = concsij[:,idxA2]
-    concArA3[:,j] = concsij[:,idxA3]
+    concArAb[:,j] = concsij[:,idxAb]
+    concArAl[:,j] = concsij[:,idxAl]
+    concArAr[:,j] = concsij[:,idxAr]
 
 
-  concs =  [concArA1,concArA2,concArA3]       
+  concs =  [concArAb,concArAl,concArAr]       
   writepickle(pickleName,tsij,concs,vars=vars)
     
   tsij,concsr,vars = readpickle(pickleName)
-  concArA1 = concsr[0]
-  concArA2 = concsr[1]
-  concArA3 = concsr[2]
+  concArAb = concsr[0]
+  concArAl = concsr[1]
+  concArAr = concsr[2]
     
   j=0   
   styles2=['k-','k-.','k.']
   styles3=['b-','b-.','b.']
-  plt.plot(tsij,concArA2[:,j],styles2[j],label="A2, v: %3.1f [] " % vars[j])
-  plt.plot(tsij,concArA3[:,j],styles3[j],label="A3, v: %3.1f [] " % vars[j])
+  plt.plot(tsij,concArAl[:,j],styles2[j],label="Al, v: %3.1f [] " % vars[j])
+  plt.plot(tsij,concArAr[:,j],styles3[j],label="Ar, v: %3.1f [] " % vars[j])
   j=1    
-  plt.plot(tsij,concArA2[:,j],styles2[j],label="A2, v: %3.1f [] " % vars[j])
-  plt.plot(tsij,concArA3[:,j],styles3[j],label="A3, v: %3.1f [] " % vars[j])
+  plt.plot(tsij,concArAl[:,j],styles2[j],label="Al, v: %3.1f [] " % vars[j])
+  plt.plot(tsij,concArAr[:,j],styles3[j],label="Ar, v: %3.1f [] " % vars[j])
   
   j=2    
-  plt.plot(tsij,concArA2[:,j],styles2[j],label="A2, v: %3.1f [] " % vars[j])
-  plt.plot(tsij,concArA3[:,j],styles3[j],label="A3, v: %3.1f [] " % vars[j])
+  plt.plot(tsij,concArAl[:,j],styles2[j],label="Al, v: %3.1f [] " % vars[j])
+  plt.plot(tsij,concArAr[:,j],styles3[j],label="Ar, v: %3.1f [] " % vars[j])
   
   plt.legend(loc=2)    
   
@@ -941,25 +941,25 @@ def test7(buff=False):
       msg =  "Running dist/Deff %f %f" % (dist,Deff)    
       print msg
       params.meshDim = np.array([dist,yz,yz])*nm_to_um # [um]  
-      params.DA1 = Deff
-      params.DB1 = Deff
-      params.DC1 = Deff
+      params.DAb = Deff
+      params.DBb = Deff
+      params.DCb = Deff
       results = Problem(params=params)
       ts = results.ts
       concs = results.concs
       
       #plt.figure()
       #plt.title(msg)
-      #plt.plot(ts,concs[:,idxA2])
-      #plt.plot(ts,concs[:,idxA3])
+      #plt.plot(ts,concs[:,idxAl])
+      #plt.plot(ts,concs[:,idxAr])
       discard = int(steps/5)
-      concA3 = concs[discard:-2,idxA3]
-      concA2 = concs[discard:-2,idxA2]
-      stddevs[i,j] = np.std(concA3)/np.std(concA2)
+      concAr = concs[discard:-2,idxAr]
+      concAl = concs[discard:-2,idxAl]
+      stddevs[i,j] = np.std(concAr)/np.std(concAl)
       print "s%f \n"%(stddevs[i,j])
       #break 
       # hijacking Ts to store last concentrations
-      ts = [concA2,concA3]
+      ts = [concAl,concAr]
     
  
     
@@ -980,12 +980,17 @@ def test8():
 
 
 def figA(steps = 200, dt = 0.01, \
-         DA1=1e9, DB1=1e9, DC1=1e9,\
+         DAb=1e9, DBb=1e9, DCb=1e9,\
+         barrierLength = 100 * nm_to_um, 
          doplot=1):
   params = Params()
   
   print "WRNING: this is a hack, since not updated correctly"
-  params.volumeDom1 = 0.001
+  params.volumeDom1 = np.prod(params.meshDim)
+  print params.volumeDom1 
+  yz = np.sqrt(params.volumeDom1/barrierLength)
+  params.meshDim=np.array([barrierLength,yz,yz])
+  print np.prod(params.meshDim)
   vols = np.array([params.volumeDom1 , params.volume_scalar2 , params.volume_scalar3])
   totVols = np.sum(vols)  
   volFracs = vols/totVols
@@ -993,13 +998,13 @@ def figA(steps = 200, dt = 0.01, \
   
   params.p=12.
   params.D12=1e9; params.D13=1e9; 
-  params.DA1=DA1  
-  params.DB1=DB1  
-  params.DC1=DC1  
+  params.DAb=DAb  
+  params.DBb=DBb  
+  params.DCb=DCb  
   cA=2; cB=1.5; cC=1.;
-  params.cA1init=cA; params.cA2init=cA; params.cA3init=cA
-  params.cB1init=cB; params.cB2init=cB; params.cB3init=cB
-  params.cC1init=cC; params.cC2init=cC; params.cC3init=cC
+  params.cAbinit=cA; params.cAlinit=cA; params.cArinit=cA
+  params.cBbinit=cB; params.cBlinit=cB; params.cBrinit=cB
+  params.cCbinit=cC; params.cClinit=cC; params.cCrinit=cC
   params.steps = steps
   params.dt = dt 
   
@@ -1023,7 +1028,7 @@ def figA(steps = 200, dt = 0.01, \
   params.k3 = s3*ks[3]
   
   tode = scipy.linspace(0.,params.steps*params.dt,params.steps)
-  y0ode=[params.cA2init,params.cB2init,params.cC2init]
+  y0ode=[params.cAlinit,params.cBlinit,params.cClinit]
   
   params.goodwinReaction = "opsplit2"
   params.meshName = "smallcube"
