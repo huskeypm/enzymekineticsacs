@@ -47,9 +47,9 @@ from dolfin import *
 import numpy as np
 
 import cPickle as pickle
-def writepickle(fileName,ts,concs,vars=-1,verbose=False):
+def writepickle(fileName,ts,concs,vars=-1,lines=-1,verbose=False):
   # store 
-  data1 = {'ts':ts,'concs':concs,'vars':vars}
+  data1 = {'ts':ts,'concs':concs,'vars':vars, 'lines':lines}
 
   if verbose:
     print "Writing ", fileName
@@ -60,7 +60,7 @@ def writepickle(fileName,ts,concs,vars=-1,verbose=False):
 
   output.close()
 
-def readpickle(fileName,novar=False):    
+def readpickle(fileName,novar=False,lines=False):    
   pkl_file = open(fileName, 'rb')
   data1 = pickle.load(pkl_file)
   ts  = data1['ts']
@@ -69,8 +69,15 @@ def readpickle(fileName,novar=False):
     vars = 1
   else: 
     vars   = data1['vars']  
+
+  dlines = data1['lines']
   pkl_file.close()
-  return ts,concs,vars
+
+  print lines
+  if lines==True:   
+    return ts,concs,vars,dlines
+  else: 
+    return ts,concs,vars
 
 
 
@@ -200,8 +207,13 @@ def Report(u_n,mesh,t,concs=-1,j=-1,params=False):
       if(j>-1): 
         concs[j,i] = conc
 
-def PrintLine(results):
-    img = PrintSlice(results,doplot=False,idx=idxAb)
+def PrintLine(results,species="A"):
+    if species=="A":
+      img = PrintSlice(results,doplot=False,idx=idxAb)
+    elif species=="B":
+      img = PrintSlice(results,doplot=False,idx=idxBb)
+    elif species=="C":
+      img = PrintSlice(results,doplot=False,idx=idxCb)
     s = np.shape(img)
 
     line = img[:,int(s[1]/2.)]
@@ -455,6 +467,8 @@ def Problem(params = Params()):
   t = ti
   T = steps*float(dt)
   lines=[]
+  linesAr = empty()
+  linesAr.A=[]; linesAr.B=[]; linesAr.C=[]
   tots=np.zeros([steps+2,nDOF])
   concs=np.zeros([steps+2,nDOF])
   ts=np.zeros(steps+2)
@@ -581,6 +595,9 @@ def Problem(params = Params()):
         file << (u_n.split()[0], t)    
         results.u_n = u_n
         lines.append(PrintLine(results))
+        linesAr.A.append(PrintLine(results,species="A"))
+        linesAr.B.append(PrintLine(results,species="B"))
+        linesAr.C.append(PrintLine(results,species="C"))
 
       ## update 
       #file << (u,vBl)
@@ -593,10 +610,64 @@ def Problem(params = Params()):
   results.tots = tots 
   results.u_n = u_n
   results.lines = lines 
+  results.linesAr = linesAr
   import copy
   results.params = copy.copy(params)
 
   return results
+
+def genFreqShifts(n=25,intv=5,steps=8001,dt=0.03,pklName = "freqshift.pkl"):
+# old steps = 4001
+# old dt = 0.05
+#dt = 0.1 # Too low resolution to resolve freq
+# ODE Ds = 10**np.linspace(-2,2-(1/n),n)
+#Ds = 10**np.linspace(1,3-(1/n),n) 
+  Ds = 10**np.linspace(1,3-(1/n),n) / 1000. # [um^2/ms]
+
+  yts=[]
+
+  #Ds = np.array([10,15,20,25])
+
+
+  plt.figure()
+  #n=1; Ds[0] = 1.0; fileName="test.png"
+  nf = np.zeros(n)
+  for i in np.arange(n):
+    print Ds[i]
+
+    #results, tode, yode = figA(steps =steps, dt = dt,doplot=0,DAb=1e3,DBb=1e3,DCb=Ds[i])
+    #results, tode, yode = figA(steps =steps, dt = dt,doplot=0,DAb=1.,DBb=1.,DCb=Ds[i])
+    results, tode, yode = figA(steps =steps, dt = dt,doplot=0,DAb=0.1,DBb=0.1,DCb=Ds[i],barrierLength=0.01)
+    
+    # limits (take latter 2/3s of trajectory(
+    yt = results.concs[:,idxAb]
+    l1,l2 = np.int(np.shape(yt)[0]/3.), np.shape(yt)[0]-2
+
+    yt = results.concs[l1:l2,idxAl]
+    t = results.ts[l1:l2]
+    yts.append(yt)
+    
+    it,psd = freq(yt,t,oldstuff=False)
+    freqMax = it[argmax(psd)] 
+    nf[i] = freqMax
+    print freqMax 
+    if(i%intv==0):
+      plt.plot(t,yt,label="DC=%f/f=%f Hz"%(Ds[i],freqMax))
+
+  #plt.xlim(600,1000)    
+  plt.legend(loc=0)
+  plt.xlabel("t [ms]")
+  
+  plt.figure()
+  freq(yt,t,doplot=True,oldstuff=False);
+  #plt.xlim(0,.05)
+
+  yts = np.asarray(yts)
+  writepickle(pklName,yts,nf,vars=Ds)
+
+  return t,yts    
+    
+    
 
 def test12():
   ## test block of left channel 
@@ -705,6 +776,7 @@ def test4():
   plt.gcf().savefig("test4.png",dpi=300) 
 
 def test5(arg=0):
+  params = Params()
   if(arg=="all" or arg==1): 
     test5i(Dbarrier=params.Ds,pickleName ="Dslow.pkl",name="slow")
   if(arg=="all" or arg==2): 
@@ -753,14 +825,14 @@ def test5i(Dbarrier=1e3,pickleName="test.pkl",name=""):
   params = oscparams(Dbarrier=Dbarrier)
   params.dt =dt
   params.steps = steps   
-
+  params.paraview = True 
   results =  Problem(params=params)
   tsp = results.ts
   concsp = results.concs  
 
   tsp = tsp[1:-1]
   concsp= concsp[1:-1]
-  writepickle(pickleName,tsp,concsp,Dbarrier)
+  writepickle(pickleName,tsp,concsp,Dbarrier,lines=results.lines)
       
 
   ts, concs,vars= readpickle(pickleName)
@@ -982,8 +1054,11 @@ def test8():
 def figA(steps = 200, dt = 0.01, \
          DAb=1e9, DBb=1e9, DCb=1e9,\
          barrierLength = 100 * nm_to_um, 
+         paraview=False,
          doplot=1):
   params = Params()
+  params.paraview = paraview
+  print paraview
   
   print "WRNING: this is a hack, since not updated correctly"
   params.volumeDom1 = np.prod(params.meshDim)
@@ -1144,6 +1219,9 @@ if __name__ == "__main__":
       quit()
     if(arg=="-figA"): 
       figA()#sys.argv[i+1])
+      quit()
+    if(arg=="-genFreq"): 
+      genFreqShifts()
       quit()
   
 
