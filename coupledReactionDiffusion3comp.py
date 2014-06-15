@@ -1,4 +1,5 @@
 
+from analysis import *
 import scipy
 import matplotlib.pylab as plt
 from plotting import *
