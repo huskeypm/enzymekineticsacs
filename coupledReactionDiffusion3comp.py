@@ -649,7 +649,7 @@ def genFreqShifts(n=25,intv=5,steps=8001,dt=0.03,pklName = "freqshift.pkl"):
     yts.append(yt)
     
     it,psd = freq(yt,t,oldstuff=False)
-    freqMax = it[argmax(psd)] 
+    freqMax = it[np.argmax(psd)] 
     nf[i] = freqMax
     print freqMax 
     if(i%intv==0):
