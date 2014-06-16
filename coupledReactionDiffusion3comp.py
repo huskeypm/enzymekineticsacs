@@ -254,7 +254,7 @@ def Problem(params = Params()):
   DAbeff = params.DAb 
   DBbeff = params.DBb 
   DCbeff = params.DCb / (1 + params.cBuff1/params.KDBuff1)
-  print "D: %f Dbulkbuff: %f [um^2/ms]" % (params.DCb,DCbeff)
+  print "DA: %f DB: %f DC: %f Deff: %f [um^2/ms]" % (params.DAb,params.DBb,params.DCb,DCbeff)
   print "dim [um]", params.meshDim
 
   steps = params.steps 
