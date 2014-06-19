@@ -137,7 +137,7 @@ class Params():
   amp = 0.05 # [uM] 
   freq = 0.1 # [kHz]? 
 
-  # reaction
+  # reaction # vs refer to reactions in left compartment, k to reactions in right compartment 
   goodwinReaction = False
   Km = 1.
   p = 2.  #12.
@@ -953,17 +953,13 @@ def test6(arg="diffs"):
 
   plt.gcf().savefig(arg+".png",dpi=300)   
 
-def test7(buff=False):
+def test7(buff=False,doplot=False,dbg=False):
   #print phis
   #print dists
   nPhis = 11
   #nBuffs = 3
   nDists = 10 
 
-
-    
-   
-    
   #KD = 1. # 1 [uM]     
   #phis = np.linspace(0.5,1.0,nPhis)
   #cBuffs = np.linspace(0,5,nBuffs) # [uM]
@@ -978,19 +974,20 @@ def test7(buff=False):
   dt = 2.5  
 
   # dbg
-  dbg=False
   prefix=""
   if dbg:
     prefix="Dbg"
     nPhis = 1 
     nDists = 1
     dists = np.array([100])
-    Deffs = np.array([0.1]) 
+    #Deffs = np.array([0.1]) 
+    Deffs = np.array([0.6]) # based on HS bound for 0.7 vol frac
     steps = 100
 
 
   if buff:
-    B = 1.
+    B = 1.#
+    B = 5.#
     KD = 1.
     Deffs = Deffs / (1 + B/KD)
 
@@ -1021,10 +1018,11 @@ def test7(buff=False):
       ts = results.ts
       concs = results.concs
       
-      #plt.figure()
-      #plt.title(msg)
-      #plt.plot(ts,concs[:,idxAl])
-      #plt.plot(ts,concs[:,idxAr])
+      if doplot: 
+        plt.figure()
+        plt.title(msg)
+        plt.plot(ts,concs[:,idxAl])
+        plt.plot(ts,concs[:,idxAr])
       discard = int(steps/5)
       concAr = concs[discard:-2,idxAr]
       concAl = concs[discard:-2,idxAl]
@@ -1038,10 +1036,15 @@ def test7(buff=False):
     
   writepickle(pickleName,ts,stddevs)    
 
-  plt.pcolormesh(Deffs,dists,stddevs,cmap="Greys_r")
-  plt.xlabel("dists")
-  plt.ylabel("Deffs") 
-  plt.gcf().savefig("test7.png",dpi=300) 
+  if dbg ==False: 
+    plt.figure()
+    plt.pcolormesh(Deffs,dists,stddevs,cmap="Greys_r")
+    plt.xlabel("dists")
+    plt.ylabel("Deffs") 
+    plt.gcf().savefig("test7.png",dpi=300) 
+
+  # returns last concentration (for dbg mistly) 
+  return concs
 
 def test8():
   ## test block of right channel 
@@ -1054,12 +1057,14 @@ def test8():
 
 def figA(steps = 200, dt = 0.01, \
          DAb=1e9, DBb=1e9, DCb=1e9,\
+         Km=1., # for inhibitor
+         k2=1.,
          barrierLength = 100 * nm_to_um, 
          paraview=False,
          doplot=1):
   params = Params()
   params.paraview = paraview
-  print paraview
+  params.Km = Km 
   
   print "WRNING: this is a hack, since not updated correctly"
   params.volumeDom1 = np.prod(params.meshDim)
