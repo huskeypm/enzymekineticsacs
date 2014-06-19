@@ -17,7 +17,7 @@ def rxn(t,y0,a,title=""):
     X,Y,Z = y
     kappa1,ikm,p,k0,k1,k2,k3 = a 
 
-    dt =[k0/(kappa1+ikm*Z**p)-k1*X,\
+    dt =[k0/(kappa1+(ikm*Z)**p)-k1*X,\
       k1*X - k2*Y,\
       k2*Y- k3*Z]
     return dt
