@@ -105,9 +105,9 @@ class Params():
   steps = 250
   dt = 2.0
 
-  Ds=0.100   # very slow [um^2/ms]
-  Dbulk=1.       # water [um^2/ms]
-  Df = 1e3   
+  Ds=0.145   # very slow [um^2/ms, ATP 
+  Dbulk=2.5      # water [um^2/ms]
+  Df = 1e9   # very fast 
   
 
   # diffusion params 
@@ -623,7 +623,11 @@ def genFreqShifts(n=25,intv=5,steps=8001,dt=0.03,pklName = "freqshift.pkl"):
 #dt = 0.1 # Too low resolution to resolve freq
 # ODE Ds = 10**np.linspace(-2,2-(1/n),n)
 #Ds = 10**np.linspace(1,3-(1/n),n) 
-  Ds = 10**np.linspace(1,3-(1/n),n) / 1000. # [um^2/ms]
+  m = n-1
+  Ds = 10**np.linspace(1,3-(1/m),m) / 1000. # [um^2/ms]
+  Ds = np.concatenate([Ds,[1e9]])
+  #print Ds
+  
 
   yts=[]
 
@@ -956,9 +960,24 @@ def test6(arg="diffs"):
 def test7(buff=False,doplot=False,dbg=False):
   #print phis
   #print dists
-  nPhis = 11
   #nBuffs = 3
-  nDists = 10 
+  # dbg
+  prefix=""
+  if dbg:
+    prefix="Dbg"
+    #nPhis = 1 
+    #nDists = 1
+    #dists = np.array([100])
+    #Deffs = np.array([0.6]) # based on HS bound for 0.7 vol frac
+
+    nPhis = 3 
+    nDists = 3  
+    steps = 100
+
+  else: 
+    nPhis = 22
+    nDists = 20 
+    steps = 200 
 
   #KD = 1. # 1 [uM]     
   #phis = np.linspace(0.5,1.0,nPhis)
@@ -972,17 +991,6 @@ def test7(buff=False,doplot=False,dbg=False):
   params = oscparams(Dbarrier=-1)
   steps =200
   dt = 2.5  
-
-  # dbg
-  prefix=""
-  if dbg:
-    prefix="Dbg"
-    nPhis = 1 
-    nDists = 1
-    dists = np.array([100])
-    #Deffs = np.array([0.1]) 
-    Deffs = np.array([0.6]) # based on HS bound for 0.7 vol frac
-    steps = 100
 
 
   if buff:
@@ -1027,7 +1035,7 @@ def test7(buff=False,doplot=False,dbg=False):
       concAr = concs[discard:-2,idxAr]
       concAl = concs[discard:-2,idxAl]
       stddevs[i,j] = np.std(concAr)/np.std(concAl)
-      print "s%f \n"%(stddevs[i,j])
+      print "sd ratio %f \n"%(stddevs[i,j])
       #break 
       # hijacking Ts to store last concentrations
       ts = [concAl,concAr]
@@ -1058,9 +1066,10 @@ def test8():
 def figA(steps = 200, dt = 0.01, \
          DAb=1e9, DBb=1e9, DCb=1e9,\
          Km=1., # for inhibitor
-         k2=1.,
+         # not used, carefully check over vs,ks definitions k2=1.,
          barrierLength = 100 * nm_to_um, 
          paraview=False,
+         skipProbForDebug=False,
          doplot=1):
   params = Params()
   params.paraview = paraview
@@ -1113,7 +1122,10 @@ def figA(steps = 200, dt = 0.01, \
   
   params.goodwinReaction = "opsplit2"
   params.meshName = "smallcube"
-  results = Problem(params=params) 
+  if skipProbForDebug:
+    results = empty()
+  else:
+    results = Problem(params=params) 
   results.volFracs = volFracs 
   results.params = params 
 
