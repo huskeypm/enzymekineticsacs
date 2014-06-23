@@ -25,3 +25,6 @@ goodwin - ODE version of goodwin oscillator
 goodwinPDE - PDE version of goodwin (for manuscript) 
 pdeode - compartmentalized model 
 
+\section{Data} 
+pkl files are generated locally, but should be copied to /net/data/huskeypm/compartment
+scp *pkl $UCSD:/net/data/huskeypm/compartment/
