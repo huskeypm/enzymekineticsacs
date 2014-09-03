@@ -105,8 +105,9 @@ class Params():
   steps = 250
   dt = 2.0
 
-  Ds=0.145   # very slow [um^2/ms, ATP 
-  Dbulk=2.5      # water [um^2/ms]
+  DATPbulk = 0.175 # Vendelin (see paper)  
+  Ds=0.6 * DATPbulk   # see paper, goodwinPDE; very slow [um^2/ms, ATP 
+  Dbulk=2.59     # water [um^2/ms]
   Df = 1e9   # very fast 
   
 
@@ -761,9 +762,9 @@ def test4():
     params.steps = 100
     params.dt = 1 # [ms] 
     params.cAbinit=0.0000  
-    params.DAb=0.145 # [um^2/ms] DATP 
-    params.DBb=0.145 # [um^2/ms] DATP 
-    params.DCb=0.145 # [um^2/ms] DATP 
+    params.DAb=params.Ds # [um^2/ms] DATP 
+    params.DBb=params.Ds # [um^2/ms] DATP 
+    params.DCb=params.Ds # [um^2/ms] DATP 
     params.cAlinit=1.
     params.cArinit=0.0000
     params.D12=1000.; params.D13=1000.
