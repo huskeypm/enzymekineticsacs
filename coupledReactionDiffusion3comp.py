@@ -186,12 +186,12 @@ class MyEqn(NonlinearProblem):
         NonlinearProblem.__init__(self)
         self.L = L
         self.a = a
-        self.reset_sparsity = True
+        #self.reset_sparsity = True
     def F(self, b, x):
         assemble(self.L, tensor=b)
     def J(self, A, x):
-        assemble(self.a, tensor=A, reset_sparsity=self.reset_sparsity)
-        self.reset_sparsity = False
+        assemble(self.a, tensor=A)#, reset_sparsity=self.reset_sparsity)
+        #self.reset_sparsity = False
 
 def Report(u_n,mesh,t,concs=-1,j=-1,params=False):   
 
@@ -200,8 +200,8 @@ def Report(u_n,mesh,t,concs=-1,j=-1,params=False):
     #u = u_n.split()[0]
     #print "Ab at xTest: ", u(xTest)              
     for i,ele in enumerate(split(u_n)):
-      tot = assemble(ele*dx,mesh=mesh)
-      vol = assemble(Constant(1.)*dx,mesh=mesh)
+      tot = assemble(ele*dx(domain=mesh))
+      vol = assemble(Constant(1.)*dx(domain=mesh))
       conc = tot/vol
       if params and params.verbose: 
         print "t=%f Conc(%d) %f " % (t,i,conc)
@@ -254,8 +254,9 @@ def Problem(params = Params()):
   DAbeff = params.DAb 
   DBbeff = params.DBb 
   DCbeff = params.DCb / (1 + params.cBuff1/params.KDBuff1)
-  print "DA: %f DB: %f DC: %f Deff: %f [um^2/ms]" % (params.DAb,params.DBb,params.DCb,DCbeff)
-  print "dim [um]", params.meshDim
+  if MPI.rank(mpi_comm_world())==0:
+    print "DA: %f DB: %f DC: %f Deff: %f [um^2/ms]" % (params.DAb,params.DBb,params.DCb,DCbeff)
+    print "dim [um]", params.meshDim
 
   steps = params.steps 
 
@@ -274,21 +275,22 @@ def Problem(params = Params()):
   marker13 = 11 # boundary marker for domains 1->3
   mesh = Mesh(params.meshName+".xml.gz")
   mesh.coordinates()[:]*= params.meshDim
-  face_markers = MeshFunction("uint",mesh, params.meshName+"_face_markers.xml.gz")
+  face_markers = MeshFunction("size_t",mesh, params.meshName+"_face_markers.xml.gz")
   ds = Measure("ds")[face_markers]
   
       
   
   
   ##
-  volumeDom1 = Constant(assemble(Constant(1.0)*dx,mesh=mesh))
+  volumeDom1 = Constant(assemble(Constant(1.0)*dx(domain=mesh)))
   params.volumeDom1 = volumeDom1
-  area = Constant(assemble(Constant(1.0)*ds(marker12),mesh=mesh))
+  area = Constant(assemble(Constant(1.0)*ds(marker12,domain=mesh)))# ,mesh=mesh))
   #was volume_scalar2 = Constant(4.*float(volumeDom1))
   volume_frac12 = volumeDom1/params.volume_scalar2 
   #was volume_scalar3 = Constant(4.*float(volumeDom1))
   volume_frac13 = volumeDom1/params.volume_scalar3
-  print "Vol V1 %f V2 %f V3 %f [um^3]" % (volumeDom1,params.volume_scalar2,params.volume_scalar3)
+  if MPI.rank(mpi_comm_world())==0:
+    print "Vol V1 %f V2 %f V3 %f [um^3]" % (volumeDom1,params.volume_scalar2,params.volume_scalar3)
   
   # functions 
   V = FunctionSpace(mesh,"CG",1)
@@ -452,7 +454,8 @@ def Problem(params = Params()):
   
   # Create nonlinear problem and Newton solver
   problem = MyEqn(a, L)
-  solver = NewtonSolver("lu")
+  solver = NewtonSolver()
+  solver.parameters["linear_solver"] = "lu"
   solver.parameters["convergence_criterion"] = "incremental"
   solver.parameters["relative_tolerance"] = 1e-6
   
@@ -470,9 +473,11 @@ def Problem(params = Params()):
   lines=[]
   linesAr = empty()
   linesAr.A=[]; linesAr.B=[]; linesAr.C=[]
-  tots=np.zeros([steps+2,nDOF])
-  concs=np.zeros([steps+2,nDOF])
-  ts=np.zeros(steps+2)
+  # not sure why I had +2 here? 
+  p1 = 1 # adding one idx, since don't start from 0?
+  tots=np.zeros([steps+p1,nDOF])
+  concs=np.zeros([steps+p1,nDOF])
+  ts=np.zeros(steps+p1)
   j=0
 
   # entire simulation interval
@@ -609,6 +614,8 @@ def Problem(params = Params()):
   results.ts = ts 
   results.concs = concs 
   results.tots = tots 
+  #if MPI.rank(mpi_comm_world())==0:
+  #  print tots
   results.u_n = u_n
   results.lines = lines 
   results.linesAr = linesAr
@@ -694,11 +701,12 @@ def test12():
   # for 5 timesteps 
   #finalRef = np.array([  37.089814176,  37.089814176, 250.910186824, 250.910186824,25.6,25.6])
   finalRef = np.array([  0.7499539 ,0.7499539 ,0.749954,0.7500461 ,0.7500461, 0.7500461,0.1 ,      0.1,0.1  ])           
-  print "start", result.tots[0,:] 
   final = result.tots[-1,:] 
-  print "final",final 
   for i in np.arange(nDOF): 
     assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
+  if MPI.rank(mpi_comm_world())==0:
+    print "final",final 
+    print "PASS!"
 
   return result
 
@@ -722,9 +730,11 @@ def test13():
   #finalRef = np.array([  27.98166065 , 27.98166065 ,256.  ,       256.   ,       29.61833935,   29.61833935])
   finalRef = np.array([  0.30002065, 0.30002065,0.3000206, 1. ,        1.  ,1 ,    0.29997935, 0.29997935,0.29997935])                 
   final = result.tots[-1,:] 
-  print final 
   for i in np.arange(nDOF): 
     assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
+  if MPI.rank(mpi_comm_world())==0:
+    print "final",final 
+    print "PASS!"
 
   return result
 
@@ -975,8 +985,8 @@ def test7(buff=False,doplot=False,dbg=False):
     steps = 100
 
   else: 
-    nPhis = 22
-    nDists = 20 
+    nPhis = 11 #prodiction: 22
+    nDists = 10 #produiction:  20 
     steps = 200 
 
   #KD = 1. # 1 [uM]     
