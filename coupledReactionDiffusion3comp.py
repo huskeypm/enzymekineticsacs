@@ -261,6 +261,7 @@ def Problem(params = Params()):
     print "DA: %f DB: %f DC: %f Deff: %f [um^2/ms]" % (params.DAb,params.DBb,params.DCb,DCbeff)
     print "dim [um]", params.meshDim
 
+  meshDim = params.meshDim
   steps = params.steps 
 
   # rescale diffusion consants 
@@ -629,7 +630,8 @@ def Problem(params = Params()):
   results.lines = lines 
   results.linesAr = linesAr
   # NOT PICKLE SAFE
-  results.params = -1; #params 
+  #results.params =params 
+  results.meshDim =params.meshDim 
   #import copy
   #results.params = copy.copy(params)
 

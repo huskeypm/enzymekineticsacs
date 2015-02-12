@@ -5,6 +5,12 @@ dt = 0.03 # varies below []
 from coupledReactionDiffusion3comp import *
 
 def RunCases(mode="none"):
+  print "SDS"; print mode 
+  if mode=="O" or mode=="all":
+    steps = 2 
+    resultsFast, tode, yode = figA(steps =steps, dt = 0.03,doplot=0,\
+       DAb=1e9,DBb=1e9,DCb=1e9,\
+       pickleName="shit.pkl")
   if mode=="A" or mode=="all":
     steps = 501
     resultsFast, tode, yode = figA(steps =steps, dt = 0.03,doplot=0,\
@@ -15,6 +21,7 @@ def RunCases(mode="none"):
 #       pickleName="resultsSlow.pkl")
 
   if mode=="B" or mode=="all":
+    steps = 501
     resultsWater, tode, yode = figA(\
        steps =steps, dt = 0.03,doplot=0,\
        DAb=Dwater,DBb=Dwater,DCb=Dwater,barrierLength=0.01,paraview=False,\
@@ -124,7 +131,7 @@ if __name__ == "__main__":
   # Loops over each argument in the command line 
   for i,arg in enumerate(sys.argv):
     # calls 'doit' with the next argument following the argument '-validation'
-    if(arg=="-validation"):
+    if(arg=="-run"):
       arg1=sys.argv[i+1] 
       RunCases(mode=arg1)
   
