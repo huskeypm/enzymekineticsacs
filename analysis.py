@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pylab as plt 
 
 # plots FFT 
 def doFFT(t,x,doplot=False):
@@ -14,6 +13,7 @@ def doFFT(t,x,doplot=False):
   dt = t[-1]-t[0]  
   freq = np.linspace(0,Fs/(2*dt),N/2.)
   if(doplot):  
+    import matplotlib.pylab as plt 
     plt.plot(freq,np.log10(psdx)); #grid on;
     plt.title('Power spectral density');
     plt.xlabel('Frequency (Hz)'); plt.ylabel('Power/Frequency (dB/Hz)');

@@ -3,12 +3,10 @@
 Warning: not Mpi safe 
 """
 from analysis import *
-import scipy
-import matplotlib.pylab as plt
+#import scipy
 import plotting
-import scipy
-import scipy.integrate
-import testrxn
+#import scipy.integrate
+#import testrxn
 class empty:pass
 
 # TODO 
@@ -241,6 +239,7 @@ def PrintSlice(results,doplot=True,idx=idxAb):
     imgx=np.reshape(img0,[res,res])
 
     if doplot:
+      import matplotlib.pylab as plt
       print np.shape(imgx)
       plt.pcolormesh(np.reshape(gx,[res,res]).T,np.reshape(gz,[res,res]).T,imgx.T,
              cmap=plt.cm.RdBu_r)
@@ -655,6 +654,7 @@ def genFreqShifts(n=25,intv=5,steps=8001,dt=0.03,pklName = "freqshift.pkl"):
   #Ds = np.array([10,15,20,25])
 
 
+  import matplotlib.pylab as plt
   plt.figure()
   #n=1; Ds[0] = 1.0; fileName="test.png"
   nf = np.zeros(n)
@@ -796,13 +796,13 @@ def test4():
 
     
   return 
-  ts = result.ts
-  concs = result.concs
-  plt.plot(ts,concs[:,idxAb],label="Ab/PDE")    
-  plt.plot(ts,concs[:,idxAl],label="Al")        
-  plt.plot(ts,concs[:,idxAr],label="Ar")        
-  plt.legend(loc=0)
-  plt.gcf().savefig("test4.png",dpi=300) 
+  #ts = result.ts
+  #concs = result.concs
+  #plt.plot(ts,concs[:,idxAb],label="Ab/PDE")    
+  #plt.plot(ts,concs[:,idxAl],label="Al")        
+  #plt.plot(ts,concs[:,idxAr],label="Ar")        
+  #plt.legend(loc=0)
+  #plt.gcf().savefig("test4.png",dpi=300) 
 
 def test5(arg=0):
   params = Params()
@@ -839,7 +839,7 @@ def oscparams(Dbarrier=1e3):
   return params 
 
 
-def test5i(Dbarrier=1e3,pickleName="test.pkl",name=""):
+def test5i(Dbarrier=1e3,pickleName="test.pkl",name="",doplot=False):
 
   steps = 500
   dt = 1.
@@ -866,12 +866,14 @@ def test5i(Dbarrier=1e3,pickleName="test.pkl",name=""):
 
   ts, concs,vars= readpickle(pickleName)
   
-  plt.title("Dbarrier %f [um^2/ms]" % Dbarrier)    
-  plt.plot(ts,concs[:,idxAb],label="Ab/PDE")    
-  plt.plot(ts,concs[:,idxAl],label="Al")        
-  plt.plot(ts,concs[:,idxAr],label="Ar")        
-  plt.legend()
-  plt.gcf().savefig("test5"+name+".png",dpi=300) 
+  if doplot:
+    import matplotlib.pylab as plt
+    plt.title("Dbarrier %f [um^2/ms]" % Dbarrier)    
+    plt.plot(ts,concs[:,idxAb],label="Ab/PDE")    
+    plt.plot(ts,concs[:,idxAl],label="Al")        
+    plt.plot(ts,concs[:,idxAr],label="Ar")        
+    plt.legend()
+    plt.gcf().savefig("test5"+name+".png",dpi=300) 
 
 
 def test6(arg="diffs"):
@@ -963,6 +965,7 @@ def test6(arg="diffs"):
   concArAl = concsr[1]
   concArAr = concsr[2]
     
+  import matplotlib.pylab as plt
   j=0   
   styles2=['k-','k-.','k.']
   styles3=['b-','b-.','b.']
@@ -1068,7 +1071,8 @@ def test7(buff=False,doplot=False,dbg=False):
     
   writepickle(pickleName,ts,stddevs)    
 
-  if dbg ==False: 
+  if dbg ==False and doplot: 
+    import matplotlib.pylab as plt
     plt.figure()
     plt.pcolormesh(Deffs,dists,stddevs,cmap="Greys_r")
     plt.xlabel("dists")
@@ -1142,7 +1146,8 @@ def figA(steps = 200, dt = 0.01, \
   params.v3 = s2*vs[3]
   params.k3 = s3*ks[3]
   
-  tode = scipy.linspace(0.,params.steps*params.dt,params.steps)
+  #tode = scipy.linspace(0.,params.steps*params.dt,params.steps)
+  tode = np.linspace(0.,params.steps*params.dt,params.steps)
   y0ode=[params.cAlinit,params.cBlinit,params.cClinit]
   
   params.goodwinReaction = "opsplit2"
