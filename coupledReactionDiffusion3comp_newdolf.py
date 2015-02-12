@@ -1,11 +1,8 @@
 
-"""
-Warning: not Mpi safe 
-"""
 from analysis import *
 import scipy
 import matplotlib.pylab as plt
-import plotting
+from plotting import *
 import scipy
 import scipy.integrate
 import testrxn
@@ -108,9 +105,8 @@ class Params():
   steps = 250
   dt = 2.0
 
-  DATPbulk = 0.175 # Vendelin (see paper)  
-  Ds=0.6 * DATPbulk   # see paper, goodwinPDE; very slow [um^2/ms, ATP 
-  Dbulk=2.59     # water [um^2/ms]
+  Ds=0.145   # very slow [um^2/ms, ATP 
+  Dbulk=2.5      # water [um^2/ms]
   Df = 1e9   # very fast 
   
 
@@ -190,12 +186,14 @@ class MyEqn(NonlinearProblem):
         NonlinearProblem.__init__(self)
         self.L = L
         self.a = a
-        #self.reset_sparsity = True
+        self.reset_sparsity = True
     def F(self, b, x):
         assemble(self.L, tensor=b)
     def J(self, A, x):
-        assemble(self.a, tensor=A)#, reset_sparsity=self.reset_sparsity)
-        #self.reset_sparsity = False
+        assemble(self.a, tensor=A, \
+          # PKH140904 reset_sparsity=self.reset_sparsity)
+        )
+        self.reset_sparsity = False
 
 def Report(u_n,mesh,t,concs=-1,j=-1,params=False):   
 
@@ -204,6 +202,8 @@ def Report(u_n,mesh,t,concs=-1,j=-1,params=False):
     #u = u_n.split()[0]
     #print "Ab at xTest: ", u(xTest)              
     for i,ele in enumerate(split(u_n)):
+      #tot = assemble(ele*dx,mesh=mesh)
+      #vol = assemble(Constant(1.)*dx,mesh=mesh)
       tot = assemble(ele*dx(domain=mesh))
       vol = assemble(Constant(1.)*dx(domain=mesh))
       conc = tot/vol
@@ -253,16 +253,14 @@ def PrintSlice(results,doplot=True,idx=idxAb):
       
 
 def Problem(params = Params()):
-  keepLines=True
+
   # get effective diffusion constant (for C only) based on buffer 
   DAbeff = params.DAb 
   DBbeff = params.DBb 
   DCbeff = params.DCb / (1 + params.cBuff1/params.KDBuff1)
-  if MPI.rank(mpi_comm_world())==0:
-    print "DA: %f DB: %f DC: %f Deff: %f [um^2/ms]" % (params.DAb,params.DBb,params.DCb,DCbeff)
-    print "dim [um]", params.meshDim
+  print "DA: %f DB: %f DC: %f Deff: %f [um^2/ms]" % (params.DAb,params.DBb,params.DCb,DCbeff)
+  print "dim [um]", params.meshDim
 
-  meshDim = params.meshDim
   steps = params.steps 
 
   # rescale diffusion consants 
@@ -287,15 +285,17 @@ def Problem(params = Params()):
   
   
   ##
+  #volumeDom1 = Constant(assemble(Constant(1.0)*dx,mesh=mesh))
   volumeDom1 = Constant(assemble(Constant(1.0)*dx(domain=mesh)))
   params.volumeDom1 = volumeDom1
-  area = Constant(assemble(Constant(1.0)*ds(marker12,domain=mesh)))# ,mesh=mesh))
+  #area = Constant(assemble(Constant(1.0)*ds(marker12),mesh=mesh))
+  area = Constant(assemble(Constant(1.0)*ds(marker12,domain=mesh)))
   #was volume_scalar2 = Constant(4.*float(volumeDom1))
   volume_frac12 = volumeDom1/params.volume_scalar2 
   #was volume_scalar3 = Constant(4.*float(volumeDom1))
   volume_frac13 = volumeDom1/params.volume_scalar3
-  if MPI.rank(mpi_comm_world())==0:
-    print "Vol V1 %f V2 %f V3 %f [um^3]" % (volumeDom1,params.volume_scalar2,params.volume_scalar3)
+  print "Vol V1 %f V2 %f V3 %f [um^3]" % \
+    (volumeDom1,params.volume_scalar2,params.volume_scalar3)
   
   # functions 
   V = FunctionSpace(mesh,"CG",1)
@@ -465,8 +465,7 @@ def Problem(params = Params()):
   solver.parameters["relative_tolerance"] = 1e-6
   
   # Output file
-  if params.paraview:     
-    file = File("output.pvd", "compressed")
+  file = File("output.pvd", "compressed")
 
 
   Report(u_n,mesh,0,params=params)                
@@ -479,11 +478,9 @@ def Problem(params = Params()):
   lines=[]
   linesAr = empty()
   linesAr.A=[]; linesAr.B=[]; linesAr.C=[]
-  # not sure why I had +2 here? (needed for notebook stuff) 
-  p1 = 2 # adding one idx, since don't start from 0?
-  tots=np.zeros([steps+p1,nDOF])
-  concs=np.zeros([steps+p1,nDOF])
-  ts=np.zeros(steps+p1)
+  tots=np.zeros([steps+2,nDOF])
+  concs=np.zeros([steps+2,nDOF])
+  ts=np.zeros(steps+2)
   j=0
 
   # entire simulation interval
@@ -605,13 +602,11 @@ def Problem(params = Params()):
 
       if params.paraview:     
         file << (u_n.split()[0], t)    
-      if keepLines:
         results.u_n = u_n
         lines.append(PrintLine(results))
         linesAr.A.append(PrintLine(results,species="A"))
         linesAr.B.append(PrintLine(results,species="B"))
         linesAr.C.append(PrintLine(results,species="C"))
-         
 
       ## update 
       #file << (u,vBl)
@@ -619,22 +614,14 @@ def Problem(params = Params()):
       u0.vector()[:] = u_n.vector()
   
 
-  #PKH 
   results.ts = ts 
   results.concs = concs 
   results.tots = tots 
-  ##if MPI.rank(mpi_comm_world())==0:
-  ##  print tots
-  ## DO I REALLY NEED THIS? OTHERWISE CAN"T PICKLE results.u_n = u_n
-  results.u_n=-1
-  results.mesh=-1
+  results.u_n = u_n
   results.lines = lines 
   results.linesAr = linesAr
-  # NOT PICKLE SAFE
-  #results.params =params 
-  results.meshDim =params.meshDim 
-  #import copy
-  #results.params = copy.copy(params)
+  import copy
+  results.params = copy.copy(params)
 
   return results
 
@@ -715,12 +702,11 @@ def test12():
   # for 5 timesteps 
   #finalRef = np.array([  37.089814176,  37.089814176, 250.910186824, 250.910186824,25.6,25.6])
   finalRef = np.array([  0.7499539 ,0.7499539 ,0.749954,0.7500461 ,0.7500461, 0.7500461,0.1 ,      0.1,0.1  ])           
-  final = result.tots[-2,:] # last step is ignored in these, for somreason  
+  print "start", result.tots[0,:] 
+  final = result.tots[-1,:] 
+  print "final",final 
   for i in np.arange(nDOF): 
     assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
-  if MPI.rank(mpi_comm_world())==0:
-    print "final",final 
-    print "PASS!"
 
   return result
 
@@ -743,12 +729,10 @@ def test13():
   # for 5 timesteps 
   #finalRef = np.array([  27.98166065 , 27.98166065 ,256.  ,       256.   ,       29.61833935,   29.61833935])
   finalRef = np.array([  0.30002065, 0.30002065,0.3000206, 1. ,        1.  ,1 ,    0.29997935, 0.29997935,0.29997935])                 
-  final = result.tots[-2,:] # last step is ignored in these, for somreason  
+  final = result.tots[-1,:] 
+  print final 
   for i in np.arange(nDOF): 
     assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
-  if MPI.rank(mpi_comm_world())==0:
-    print "final",final 
-    print "PASS!"
 
   return result
 
@@ -785,9 +769,9 @@ def test4():
     params.steps = 100
     params.dt = 1 # [ms] 
     params.cAbinit=0.0000  
-    params.DAb=params.Ds # [um^2/ms] DATP 
-    params.DBb=params.Ds # [um^2/ms] DATP 
-    params.DCb=params.Ds # [um^2/ms] DATP 
+    params.DAb=0.145 # [um^2/ms] DATP 
+    params.DBb=0.145 # [um^2/ms] DATP 
+    params.DCb=0.145 # [um^2/ms] DATP 
     params.cAlinit=1.
     params.cArinit=0.0000
     params.D12=1000.; params.D13=1000.
@@ -999,8 +983,8 @@ def test7(buff=False,doplot=False,dbg=False):
     steps = 100
 
   else: 
-    nPhis = 11 #prodiction: 22
-    nDists = 10 #produiction:  20 
+    nPhis = 22
+    nDists = 20 
     steps = 200 
 
   #KD = 1. # 1 [uM]     
@@ -1094,8 +1078,7 @@ def figA(steps = 200, dt = 0.01, \
          barrierLength = 100 * nm_to_um, 
          paraview=False,
          skipProbForDebug=False,
-         doplot=1,
-         pickleName="data.pkl"):
+         doplot=1):
   params = Params()
   params.paraview = paraview
   params.Km = Km 
@@ -1152,41 +1135,34 @@ def figA(steps = 200, dt = 0.01, \
   else:
     results = Problem(params=params) 
   results.volFracs = volFracs 
-  # NOT PICKLE SAFE
-  results.params = -1; #params 
+  results.params = params 
 
   # for compare 
   import goodwin
   ks = np.concatenate(([1,1/params.Km,params.p],kodes))
   yode=goodwin.rxn(tode,y0ode,ks)
-  results.tode = tode
-  results.yode = yode
       
-  doplot = False
   if doplot:
     # plot first set 
-    plotting.plotconcs1(results.ts,results.concs)
-    plotting.plotconcs2(results.ts,results.concs)
-    plotting.plotconcssum(results.ts,results.concs)
+    plotconcs1(results.ts,results.concs)
+    plotconcs2(results.ts,results.concs)
+    plotconcssum(results.ts,results.concs)
   
-    plotting.plotODE(tode,yode)
+    plotODE(tode,yode)
     plt.gcf().savefig("testin.png",dpi=300)
   
     plt.figure()
     plotODE(tode,yode)
 
 #print yode
+  return results, tode, yode
 
-  # pickle 
-  import cPickle as pickle 
-  #data1 = {'results':empty()}  
-  data1 = {'results':results} #,'tode':tode,'yode':yode}
-  output = open(pickleName, 'wb')
-  pickle.dump(data1, output)
-  output.close()
 
   
-  return results, tode, yode
+    
+
+  
+
 
 
 def validation(): 
