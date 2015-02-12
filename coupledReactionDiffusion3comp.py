@@ -1,8 +1,11 @@
 
+"""
+Warning: not Mpi safe 
+"""
 from analysis import *
 import scipy
 import matplotlib.pylab as plt
-from plotting import *
+import plotting
 import scipy
 import scipy.integrate
 import testrxn
@@ -249,7 +252,7 @@ def PrintSlice(results,doplot=True,idx=idxAb):
       
 
 def Problem(params = Params()):
-
+  keepLines=True
   # get effective diffusion constant (for C only) based on buffer 
   DAbeff = params.DAb 
   DBbeff = params.DBb 
@@ -460,7 +463,8 @@ def Problem(params = Params()):
   solver.parameters["relative_tolerance"] = 1e-6
   
   # Output file
-  file = File("output.pvd", "compressed")
+  if params.paraview:     
+    file = File("output.pvd", "compressed")
 
 
   Report(u_n,mesh,0,params=params)                
@@ -473,8 +477,8 @@ def Problem(params = Params()):
   lines=[]
   linesAr = empty()
   linesAr.A=[]; linesAr.B=[]; linesAr.C=[]
-  # not sure why I had +2 here? 
-  p1 = 1 # adding one idx, since don't start from 0?
+  # not sure why I had +2 here? (needed for notebook stuff) 
+  p1 = 2 # adding one idx, since don't start from 0?
   tots=np.zeros([steps+p1,nDOF])
   concs=np.zeros([steps+p1,nDOF])
   ts=np.zeros(steps+p1)
@@ -599,11 +603,13 @@ def Problem(params = Params()):
 
       if params.paraview:     
         file << (u_n.split()[0], t)    
+      if keepLines:
         results.u_n = u_n
         lines.append(PrintLine(results))
         linesAr.A.append(PrintLine(results,species="A"))
         linesAr.B.append(PrintLine(results,species="B"))
         linesAr.C.append(PrintLine(results,species="C"))
+         
 
       ## update 
       #file << (u,vBl)
@@ -611,16 +617,21 @@ def Problem(params = Params()):
       u0.vector()[:] = u_n.vector()
   
 
+  #PKH 
   results.ts = ts 
   results.concs = concs 
   results.tots = tots 
-  #if MPI.rank(mpi_comm_world())==0:
-  #  print tots
-  results.u_n = u_n
+  ##if MPI.rank(mpi_comm_world())==0:
+  ##  print tots
+  ## DO I REALLY NEED THIS? OTHERWISE CAN"T PICKLE results.u_n = u_n
+  results.u_n=-1
+  results.mesh=-1
   results.lines = lines 
   results.linesAr = linesAr
-  import copy
-  results.params = copy.copy(params)
+  # NOT PICKLE SAFE
+  results.params = -1; #params 
+  #import copy
+  #results.params = copy.copy(params)
 
   return results
 
@@ -701,7 +712,7 @@ def test12():
   # for 5 timesteps 
   #finalRef = np.array([  37.089814176,  37.089814176, 250.910186824, 250.910186824,25.6,25.6])
   finalRef = np.array([  0.7499539 ,0.7499539 ,0.749954,0.7500461 ,0.7500461, 0.7500461,0.1 ,      0.1,0.1  ])           
-  final = result.tots[-1,:] 
+  final = result.tots[-2,:] # last step is ignored in these, for somreason  
   for i in np.arange(nDOF): 
     assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
   if MPI.rank(mpi_comm_world())==0:
@@ -729,7 +740,7 @@ def test13():
   # for 5 timesteps 
   #finalRef = np.array([  27.98166065 , 27.98166065 ,256.  ,       256.   ,       29.61833935,   29.61833935])
   finalRef = np.array([  0.30002065, 0.30002065,0.3000206, 1. ,        1.  ,1 ,    0.29997935, 0.29997935,0.29997935])                 
-  final = result.tots[-1,:] 
+  final = result.tots[-2,:] # last step is ignored in these, for somreason  
   for i in np.arange(nDOF): 
     assert(np.abs(final[i] - finalRef[i])< 0.001), "Failed for species %d [%f/%f]" % (i,final[i],finalRef[i])
   if MPI.rank(mpi_comm_world())==0:
@@ -1080,7 +1091,8 @@ def figA(steps = 200, dt = 0.01, \
          barrierLength = 100 * nm_to_um, 
          paraview=False,
          skipProbForDebug=False,
-         doplot=1):
+         doplot=1,
+         pickleName="data.pkl"):
   params = Params()
   params.paraview = paraview
   params.Km = Km 
@@ -1137,34 +1149,41 @@ def figA(steps = 200, dt = 0.01, \
   else:
     results = Problem(params=params) 
   results.volFracs = volFracs 
-  results.params = params 
+  # NOT PICKLE SAFE
+  results.params = -1; #params 
 
   # for compare 
   import goodwin
   ks = np.concatenate(([1,1/params.Km,params.p],kodes))
   yode=goodwin.rxn(tode,y0ode,ks)
+  results.tode = tode
+  results.yode = yode
       
+  doplot = False
   if doplot:
     # plot first set 
-    plotconcs1(results.ts,results.concs)
-    plotconcs2(results.ts,results.concs)
-    plotconcssum(results.ts,results.concs)
+    plotting.plotconcs1(results.ts,results.concs)
+    plotting.plotconcs2(results.ts,results.concs)
+    plotting.plotconcssum(results.ts,results.concs)
   
-    plotODE(tode,yode)
+    plotting.plotODE(tode,yode)
     plt.gcf().savefig("testin.png",dpi=300)
   
     plt.figure()
     plotODE(tode,yode)
 
 #print yode
+
+  # pickle 
+  import cPickle as pickle 
+  #data1 = {'results':empty()}  
+  data1 = {'results':results} #,'tode':tode,'yode':yode}
+  output = open(pickleName, 'wb')
+  pickle.dump(data1, output)
+  output.close()
+
+  
   return results, tode, yode
-
-
-  
-    
-
-  
-
 
 
 def validation(): 
