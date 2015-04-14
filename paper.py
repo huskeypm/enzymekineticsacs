@@ -1,11 +1,10 @@
 Dwater = 2.6 # um2/ms (see paper) 
-DATPbulk = 0.183 # um2/ms
-DATP = 0.145 # um2/ms
+DATPbulk = 0.175 # um2/ms
+DATP = 0.105 # um2/ms
 dt = 0.03 # varies below []
 from coupledReactionDiffusion3comp import *
 
 def RunCases(mode="none"):
-  print "SDS"; print mode 
   if mode=="O" or mode=="all":
     steps = 2 
     resultsFast, tode, yode = figA(steps =steps, dt = 0.03,doplot=0,\
@@ -74,6 +73,8 @@ def RunCases(mode="none"):
                                               DAb=Dref,DBb=Dref,DCb=Dref*scales[2],\
                                               pickleName="resultsABslowCfast.pkl")   
 
+  if mode=="freq" or mode=="all":
+    genFreqShifts()  
 
 
 
@@ -103,7 +104,7 @@ Purpose:
  
 Usage:
 """
-  msg+="  %s -validation" % (scriptName)
+  msg+="  %s -run [A/B/C...]" % (scriptName)
   msg+="""
   
  

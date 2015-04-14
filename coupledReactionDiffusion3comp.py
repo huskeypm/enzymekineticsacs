@@ -106,7 +106,7 @@ class Params():
   steps = 250
   dt = 2.0
 
-  DATPbulk = 0.175 # Vendelin (see paper)  
+  DATPbulk = 0.175 # Vendelin (see paper) (normalized val in Tb1 Vendelin 2008) 
   Ds=0.6 * DATPbulk   # see paper, goodwinPDE; very slow [um^2/ms, ATP 
   Dbulk=2.59     # water [um^2/ms]
   Df = 1e9   # very fast 
@@ -233,6 +233,7 @@ def PrintSlice(results,doplot=True,idx=idxAb):
     (gx,gy,gz) = np.mgrid[0:dims[0]:(res*1j),
                           dims[1]/2.:dims[1]/2.:1j,
                           0:dims[2]:(res*1j)]
+    import scipy
     from scipy.interpolate import griddata
     img0 = griddata(mesh.coordinates(),up.vector(),(gx,gy,gz))
     
@@ -508,7 +509,7 @@ def Problem(params = Params()):
       # operator splitting 
       if(params.goodwinReaction=="opsplit"): # after solve? 
         u_array = u_n.vector().array() 
-        tis = scipy.linspace(t,t+float(dt),steps)
+        tis = np.linspace(t,t+float(dt),steps)
         y0s = np.array([u_array[indcAl],u_array[indcBl], u_array[indcCl]])
         y0s = np.ndarray.flatten(y0s)
         #print y0s
@@ -524,7 +525,7 @@ def Problem(params = Params()):
         import goodwin 
         p = params
         u_array = u_n.vector().array() 
-        tis = scipy.linspace(t,t+float(dt),steps)
+        tis = np.linspace(t,t+float(dt),steps)
 
         # left side 
         y0s = np.array([u_array[indcAl],u_array[indcBl], u_array[indcCl]])
@@ -552,7 +553,7 @@ def Problem(params = Params()):
       if(params.goodwinReaction=="opsplitTest"): # after solve? 
         import testrxn
         u_array = u_n.vector().array() 
-        tis = scipy.linspace(t,t+float(dt),steps)
+        tis = np.linspace(t,t+float(dt),steps)
 
         # left side 
         y0s = np.array([u_array[indcAl],u_array[indcBl], u_array[indcCl]])

@@ -1,4 +1,5 @@
 ### For plotting figuyres for manuscruipt
+import matplotlib.pylab as plt 
 from coupledReactionDiffusion3comp import *
 import numpy as np 
 
