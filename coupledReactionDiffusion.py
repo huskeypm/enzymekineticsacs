@@ -29,8 +29,9 @@ idxA3 = 4 # right compartment
 nm_to_um = 1.e-3
 
 print "WARNING: fixunits" 
-Ds=0.01     # very slow [um^2/ms]
-Dw=1.       # water [um^2/ms]
+#Ds=0.01     # very slow [um^2/ms]
+Ds = 0.105 # [um^2/ms] 
+Dw=2.6      # water [um^2/ms]
 Df = 1000.
 
 
@@ -471,7 +472,7 @@ def test4():
     params.steps = 100
     params.dt = 1 # [ms] 
     params.cA1init=0.0000  
-    params.D1=0.145 # [um^2/ms] DATP 
+    params.D1=0.105 # [um^2/ms] DATP see 5.1.3  
     params.cA2init=1.
     params.cA3init=0.0000
     params.D12=1000.; params.D13=1000.

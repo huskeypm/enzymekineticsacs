@@ -3,24 +3,24 @@ import scipy.integrate
 
 
 
-kappa1=1.;
-ikm=1;
-p=12.
-k0=5;
-k1=1;
-k2=1;
-k3=1; #0.8;
+kappa1=1.; # []
+ikm=1; # 1/Km  [1/uM] 
+p=12.; # []
+k0=5; # [uM/ms] 
+k1=1; # [1/ms] 
+k2=1; # [1/ms] 
+k3=1; # [1/ms] 
 
 # single compartment 
 def rxn(t,y0,a,title=""): 
   def f(y,t,a):
-    X,Y,Z = y
+    X,Y,Z = y  # [uM] 
     kappa1,ikm,p,k0,k1,k2,k3 = a 
 
-    dt =[k0/(kappa1+(ikm*Z)**p)-k1*X,\
+    dcdt =[k0/(kappa1+(ikm*Z)**p)-k1*X,\
       k1*X - k2*Y,\
       k2*Y- k3*Z]
-    return dt
+    return dcdt
 
   y = scipy.integrate.odeint(f,y0,t,args=(a,))
   return y 

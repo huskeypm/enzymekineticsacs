@@ -75,6 +75,8 @@ def RunCases(mode="none"):
 
   if mode=="freq" or mode=="all":
     genFreqShifts()  
+  if mode=="freqtest" or mode=="all":
+    genFreqShifts(n=4,intv=1,steps=1000,pklName ="freqshiftTest.pkl")
 
 
 
