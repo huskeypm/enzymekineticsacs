@@ -93,7 +93,8 @@ debug = False
 
 ## Params 
 # dist between ODE/PDE compartments 
-dist = 1.*nm_to_um  # [um] PKH what is this - dist between 1/2 and 1/3 
+dist = 1.*nm_to_um  # [um] dist between 1/2 and 1/3 
+dist *= 1 # [um^2] area between compartments 
 dist = Constant(dist)  # 
 
 class Params():
