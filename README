@@ -1,8 +1,16 @@
 Finite element diffusion simulations of negative feedback inhibition and forced periodic systems in three dimensions. 
 
+\section{Index} 
 goodwinPDEtests  - validating implementation 
 acstalks - first pass at data for conference
 compart - First pass at data for manuscript using ODEs
 goodwin - ODE version of goodwin oscillator
 goodwinPDE - PDE version of goodwin (for manuscript) 
 pdeode - compartmentalized model 
+
+\section{Data} 
+pkl files are generated locally, but should be copied to /net/data/huskeypm/compartment
+scp *pkl $UCSD:/net/data/huskeypm/compartment/
+
+Now Raw Data is here:
+root = "/net/share/shared/papers/150824_JCP_Changsun/"
